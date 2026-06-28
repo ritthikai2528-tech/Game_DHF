@@ -255,16 +255,9 @@ const ALL_QUESTIONS = [
   {text:'หัวใจสำคัญของการป้องกันโรคไข้เลือดออกคือ?', options:['การกำจัดยุงลาย','การฉีดวัคซีน','การรักษา','การกินยา'], correct:0}
 ];
 
-// ฟังก์ชันสุ่มและเลือกคำถาม
-function getRandomQuestions(num) {
-  let shuffled = [...ALL_QUESTIONS].sort(() => 0.5 - Math.random());
-  return shuffled.slice(0, num);
-}
-
-// นำไปใช้ในเกม (แทนที่ตัวแปร GAME_STAGES เดิม)
-const SELECTED_QUESTIONS = getRandomQuestions(10);
-const GAME_STAGES = [
-  { label:'ด่านความรู้', questions: SELECTED_QUESTIONS }
+// เตรียมโครงสร้างด่านไว้ก่อน (เดี๋ยวค่อยใส่คำถามตอนสร้าง/เข้าห้อง)
+let GAME_STAGES = [
+  { label:'ด่านความรู้', questions: [] }
 ];
 
 // รายการ 30 ตัวละคร
@@ -331,32 +324,35 @@ async function hostCreateRoom(isDemo) {
   h_time = parseInt(document.getElementById('host-time').value);
   h_roomCode = Math.random().toString(36).substr(2,5).toUpperCase();
   
-  // สุ่มเลือก 10 ข้อ จาก 20 ข้อ (เก็บ index ไว้)
-  let indices = Array.from({length: 20}, (_, i) => i);
+  const sbCfgStr = document.getElementById('host-sb-config').value;
+  
+  // 🌟 1. สุ่มตัวเลข Index 10 ข้อ
+  let indices = Array.from({length: ALL_QUESTIONS.length}, (_, i) => i);
   let selectedIndices = indices.sort(() => 0.5 - Math.random()).slice(0, 10);
-  let qListStr = JSON.stringify(selectedIndices); // เช่น [3, 0, 15, ...]
+  let qListStr = JSON.stringify(selectedIndices);
 
-  if(!h_isDemo && sbClient) {
-    await sbClient.from('rooms').insert([{ 
-      room_code: h_roomCode, name: name, status: 'lobby', timePerQ: h_time, stageIdx: 0, qIdx: 0, q_list: qListStr 
-    }]);
+  // 🌟 2. โหลดคำถาม 10 ข้อนั้นเข้าฝั่ง Host
+  GAME_STAGES[0].questions = selectedIndices.map(idx => ALL_QUESTIONS[idx]);
+
+  if(!h_isDemo && sbCfgStr) {
+    try {
+      const cfg = JSON.parse(sbCfgStr);
+      sbClient = window.supabase.createClient(cfg.url, cfg.key);
+      
+      const { error } = await sbClient.from('rooms').insert([{ 
+        room_code: h_roomCode, name: name, status: 'lobby', timePerQ: h_time, stageIdx: 0, qIdx: 0, q_list: qListStr 
+      }]);
       
       if(error) throw error;
 
       h_roomChannel = sbClient.channel('host-room')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_code=eq.${h_roomCode}` }, payload => {
           const p = payload.new;
-          if (p && p.id) {
-            h_players[p.id] = p;
-            hostRenderPlayers();
-            hostRenderLB();
-          }
+          if (p && p.id) { h_players[p.id] = p; hostRenderPlayers(); hostRenderLB(); }
         }).subscribe();
         
     } catch(e) { 
-      console.error(e);
-      alert('Supabase Error: ตรวจสอบ Config JSON, Table Schema หรือ RLS Policies'); 
-      return; 
+      console.error(e); alert('Supabase Error: ตรวจสอบ Config JSON'); return; 
     }
   } else if (h_isDemo) {
     setTimeout(() => { h_players = {'d1':{name:'ด.ช.สมชาย',score:0,avatar:'👦'}, 'd2':{name:'ด.ญ.สมหญิง',score:0,avatar:'👧'}}; hostRenderPlayers(); }, 1000);
@@ -365,14 +361,14 @@ async function hostCreateRoom(isDemo) {
   document.getElementById('lobby-room-title').textContent = name;
   document.getElementById('host-code-display').textContent = h_roomCode;
   
+  // 🌟 3. ฝัง qList ลงใน URL ด้วย เพื่อให้ Demo Mode ซิงค์คำถามได้
   const base = window.location.href.split('?')[0];
-  const url = base + `?mode=player&room=${h_roomCode}${h_isDemo?'&demo=1':''}&sbCfg=${encodeURIComponent(sbCfgStr)}`;
+  const url = base + `?mode=player&room=${h_roomCode}${h_isDemo ? '&demo=1&qList='+encodeURIComponent(qListStr) : ''}&sbCfg=${encodeURIComponent(sbCfgStr)}`;
   
   document.getElementById('host-qr').innerHTML = '';
   new QRCode(document.getElementById('host-qr'), { text: url, width: 200, height: 200, colorDark: '#1a2744' });
   showHostScreen('host-lobby');
 }
-
 function hostRenderPlayers() {
   const list = document.getElementById('host-player-list');
   list.innerHTML = Object.values(h_players).map(p => `<div class="lb-row">${p.avatar||'👦'} ${p.name} (พร้อม)</div>`).join('');
@@ -471,7 +467,20 @@ async function playerJoin() {
   
   document.getElementById('p-badge').textContent = `${p_avatar} ${name}`;
   
-  if(p_isDemo) { showPlayerScreen('player-waiting'); setTimeout(() => pStartQ(0,0,20), 2000); return; }
+  if(p_isDemo) { 
+    // 🌟 Demo Mode: อ่าน qList จาก URL
+    const params = new URLSearchParams(window.location.search);
+    let qListParam = params.get('qList');
+    if (qListParam) {
+      let indices = JSON.parse(decodeURIComponent(qListParam));
+      GAME_STAGES[0].questions = indices.map(idx => ALL_QUESTIONS[idx]);
+    } else {
+      GAME_STAGES[0].questions = ALL_QUESTIONS.slice(0, 10);
+    }
+    showPlayerScreen('player-waiting'); 
+    setTimeout(() => pStartQ(0,0,20), 2000); 
+    return; 
+  }
   
   if(p_sbCfgStr) {
     try {
@@ -480,6 +489,23 @@ async function playerJoin() {
         sbClient = window.supabase.createClient(cfg.url, cfg.key);
       }
       
+      // 🌟 1. ดึงข้อมูลห้อง (เพื่อเอา q_list)
+      const { data: roomData, error: roomErr } = await sbClient
+        .from('rooms')
+        .select('q_list')
+        .eq('room_code', p_roomCode)
+        .single();
+      
+      if (roomErr || !roomData) {
+        showToast('ไม่พบรหัสห้องนี้!');
+        return;
+      }
+
+      // 🌟 2. เซ็ตคำถามให้ตรงกับ Host โดยแปลงจากตัวเลข Index กลับเป็นคำถาม
+      const indices = JSON.parse(roomData.q_list);
+      GAME_STAGES[0].questions = indices.map(idx => ALL_QUESTIONS[idx]);
+      
+      // 🌟 3. บันทึกชื่อผู้เล่น
       const { error } = await sbClient.from('players').insert([{ 
         id: p_id, room_code: p_roomCode, name: name, avatar: p_avatar, score: 0 
       }]);
@@ -497,8 +523,7 @@ async function playerJoin() {
 
     } catch(e) { 
       console.error(e);
-      p_isDemo = true; showToast('เชื่อมต่อ Supabase ล้มเหลว สลับเป็น Demo Mode');
-      showPlayerScreen('player-waiting'); setTimeout(() => pStartQ(0,0,20), 2000); 
+      showToast('เกิดข้อผิดพลาดในการเข้าร่วมห้อง');
     }
   }
 }
