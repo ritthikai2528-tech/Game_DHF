@@ -112,6 +112,7 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
 <div id="host-mode" class="app-mode">
   <div id="host-setup" class="host-screen active fade-in">
     <button class="btn btn-ghost" style="position:absolute;top:20px;left:20px" onclick="launchMode('hub')">🏠 กลับเมนูหลัก</button>
+    <button class="btn btn-primary" style="position:absolute;top:20px;right:20px" onclick="location.reload()">🔄 เริ่มห้องใหม่ (Refresh)</button>
     <span style="font-size:4rem;margin-bottom:10px">👨‍🏫</span>
     <h1 style="color:var(--yellow);margin-bottom:20px">ห้องควบคุมครู</h1>
     <div class="setup-card">
@@ -123,10 +124,7 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
         <label>เวลาต่อข้อ (วินาที)</label>
         <select id="host-time"><option value="15">15</option><option value="20" selected>20</option><option value="30">30</option></select>
       </div>
-      <div class="input-group">
-        <label>Supabase Config JSON (หรือเว้นว่างเพื่อใช้ Demo)</label>
-        <input type="text" id="host-sb-config" placeholder='{"url":"https://...","key":"..."}'>
-      </div>
+      
       <button class="btn btn-primary" style="width:100%" onclick="hostCreateRoom(false)">สร้างห้อง (Supabase)</button>
       <button class="btn btn-teal" style="width:100%;margin-top:10px" onclick="hostCreateRoom(true)">🧪 ทดสอบ Demo Mode (ไม่ต้องใช้เน็ต)</button>
     </div>
@@ -185,6 +183,7 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
 <div id="player-mode" class="app-mode">
   <div id="player-join" class="player-screen active fade-in">
     <button class="btn btn-ghost" style="position:absolute;top:20px;left:20px" onclick="launchMode('hub')">🏠</button>
+    <button class="btn btn-primary" style="position:absolute;top:20px;right:20px" onclick="location.reload()">🔄 เริ่มห้องใหม่ (Refresh)</button>
     <span style="font-size:4rem;margin-bottom:10px">📱</span>
     <h1 style="color:var(--yellow);margin-bottom:20px">เข้าร่วมห้อง</h1>
     <div class="panel" style="width:100%">
@@ -273,8 +272,10 @@ function showToast(msg) {
   setTimeout(() => t.style.display = 'none', 2500);
 }
 
-// Global Supabase Client
-let sbClient = null;
+// Global Supabase Client (Hardcode เพื่อความรวดเร็วและให้นักเรียนเข้าได้อิสระ)
+const SUPABASE_URL = 'https://ospqpdgmdufohmzntbpp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zcHFwZGdtZHVmb2htem50YnBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2MDU0NzksImV4cCI6MjA5ODE4MTQ3OX0.XVYAgmlTB896CxqBMDXqXT2gUSgUahqtLjj8gx4Ogys';
+let sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 function launchMode(mode) {
   document.querySelectorAll('.app-mode').forEach(el => el.classList.remove('active'));
@@ -303,7 +304,7 @@ window.onload = () => {
     launchMode('player');
     document.getElementById('p-room-code').value = params.get('room') || '';
     p_isDemo = params.get('demo') === '1';
-    p_sbCfgStr = params.get('sbCfg');
+    // ลบการดึง p_sbCfgStr ออก เพราะเราฝังคีย์ไว้แล้ว
   }
 };
 
@@ -324,8 +325,6 @@ async function hostCreateRoom(isDemo) {
   h_time = parseInt(document.getElementById('host-time').value);
   h_roomCode = Math.random().toString(36).substr(2,5).toUpperCase();
   
-  const sbCfgStr = document.getElementById('host-sb-config').value;
-  
   // 🌟 1. สุ่มตัวเลข Index 10 ข้อ
   let indices = Array.from({length: ALL_QUESTIONS.length}, (_, i) => i);
   let selectedIndices = indices.sort(() => 0.5 - Math.random()).slice(0, 10);
@@ -334,10 +333,9 @@ async function hostCreateRoom(isDemo) {
   // 🌟 2. โหลดคำถาม 10 ข้อนั้นเข้าฝั่ง Host
   GAME_STAGES[0].questions = selectedIndices.map(idx => ALL_QUESTIONS[idx]);
 
-  if(!h_isDemo && sbCfgStr) {
+  if(!h_isDemo) {
     try {
-      const cfg = JSON.parse(sbCfgStr);
-      sbClient = window.supabase.createClient(cfg.url, cfg.key);
+      // ไม่ต้องเช็คและสร้าง sbClient ใหม่แล้ว เพราะถูกสร้างไว้ที่ Global
       
       const { error } = await sbClient.from('rooms').insert([{ 
         room_code: h_roomCode, name: name, status: 'lobby', timePerQ: h_time, stageIdx: 0, qIdx: 0, q_list: qListStr 
@@ -361,9 +359,9 @@ async function hostCreateRoom(isDemo) {
   document.getElementById('lobby-room-title').textContent = name;
   document.getElementById('host-code-display').textContent = h_roomCode;
   
-  // 🌟 3. ฝัง qList ลงใน URL ด้วย เพื่อให้ Demo Mode ซิงค์คำถามได้
+  // 🌟 3. ลิงก์ที่สร้างจะสั้นและสะอาดขึ้นมาก นักเรียนเข้าสู่ระบบได้อิสระ
   const base = window.location.href.split('?')[0];
-  const url = base + `?mode=player&room=${h_roomCode}${h_isDemo ? '&demo=1&qList='+encodeURIComponent(qListStr) : ''}&sbCfg=${encodeURIComponent(sbCfgStr)}`;
+  const url = base + `?mode=player&room=${h_roomCode}${h_isDemo ? '&demo=1&qList='+encodeURIComponent(qListStr) : ''}`;
   
   document.getElementById('host-qr').innerHTML = '';
   new QRCode(document.getElementById('host-qr'), { text: url, width: 200, height: 200, colorDark: '#1a2744' });
@@ -455,11 +453,6 @@ function pSelectAvatar(el) {
   el.classList.add('selected'); p_avatar = el.dataset.avatar;
 }
 
-function getQuestionData(qIdx) {
-  let qIndex = currentQList[qIdx];
-  return ALL_QUESTIONS[qIndex];
-}
-
 async function playerJoin() {
   p_roomCode = document.getElementById('p-room-code').value.toUpperCase();
   const name = document.getElementById('p-name').value;
@@ -482,12 +475,9 @@ async function playerJoin() {
     return; 
   }
   
-  if(p_sbCfgStr) {
+  if(!p_isDemo) {
     try {
-      if(!sbClient) {
-        const cfg = JSON.parse(decodeURIComponent(p_sbCfgStr));
-        sbClient = window.supabase.createClient(cfg.url, cfg.key);
-      }
+      // ใช้ sbClient แบบ Global ได้เลย ไม่ต้องรอพาร์ส Config JSON
       
       // 🌟 1. ดึงข้อมูลห้อง (เพื่อเอา q_list)
       const { data: roomData, error: roomErr } = await sbClient
@@ -557,7 +547,14 @@ async function pAnswer(idx, correctIdx) {
   }
   const fb = document.getElementById('p-feedback');
   if(idx === correctIdx) {
-    p_score += 10; fb.textContent = '✅ ถูกต้อง! +10'; fb.style.color = 'var(--green)';
+    // คำนวณคะแนน: คะแนนพื้นฐาน 10 + โบนัสความเร็ว (เวลาที่เหลือ x 2)
+    let timeBonus = p_timeLeft * 2;
+    let totalScoreGain = 10 + timeBonus;
+    p_score += totalScoreGain; 
+    
+    fb.textContent = `✅ ถูกต้อง! +${totalScoreGain} (โบนัสเวลา +${timeBonus})`; 
+    fb.style.color = 'var(--green)';
+    
     if(sbClient && !p_isDemo) {
       await sbClient.from('players').update({score: p_score}).eq('id', p_id);
     }
