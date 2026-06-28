@@ -330,18 +330,16 @@ async function hostCreateRoom(isDemo) {
   const name = document.getElementById('host-room-name').value;
   h_time = parseInt(document.getElementById('host-time').value);
   h_roomCode = Math.random().toString(36).substr(2,5).toUpperCase();
-  h_players = {};
   
-  let sbCfgStr = document.getElementById('host-sb-config').value.trim();
-  
-  if(!h_isDemo && sbCfgStr) {
-    try {
-      const cfg = JSON.parse(sbCfgStr);
-      sbClient = window.supabase.createClient(cfg.url, cfg.key);
-      
-      const { error } = await sbClient.from('rooms').insert([{ 
-        room_code: h_roomCode, name: name, status: 'lobby', timePerQ: h_time, stageIdx: 0, qIdx: 0
-      }]);
+  // สุ่มเลือก 10 ข้อ จาก 20 ข้อ (เก็บ index ไว้)
+  let indices = Array.from({length: 20}, (_, i) => i);
+  let selectedIndices = indices.sort(() => 0.5 - Math.random()).slice(0, 10);
+  let qListStr = JSON.stringify(selectedIndices); // เช่น [3, 0, 15, ...]
+
+  if(!h_isDemo && sbClient) {
+    await sbClient.from('rooms').insert([{ 
+      room_code: h_roomCode, name: name, status: 'lobby', timePerQ: h_time, stageIdx: 0, qIdx: 0, q_list: qListStr 
+    }]);
       
       if(error) throw error;
 
@@ -459,6 +457,11 @@ function showPlayerScreen(id) {
 function pSelectAvatar(el) {
   document.querySelectorAll('.avatar-btn').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected'); p_avatar = el.dataset.avatar;
+}
+
+function getQuestionData(qIdx) {
+  let qIndex = currentQList[qIdx];
+  return ALL_QUESTIONS[qIndex];
 }
 
 async function playerJoin() {
