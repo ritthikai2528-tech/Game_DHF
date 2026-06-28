@@ -85,6 +85,36 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
 /* ============ GLOBAL TOAST ============ */
 .global-toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--yellow);color:var(--navy);border-radius:30px;padding:10px 24px;font-weight:800;font-size:1rem;z-index:9999;animation:toastIn .4s ease forwards;display:none}
 @keyframes toastIn{0%{opacity:0;transform:translateX(-50%) scale(.7)}60%{transform:translateX(-50%) scale(1.08)}100%{opacity:1;transform:translateX(-50%) scale(1)}}
+
+/* ============ PODIUM & FINAL ANIMATIONS (GEN Z STYLE) ============ */
+.podium-wrap { display: flex; align-items: flex-end; justify-content: center; gap: 12px; margin: 40px 0 20px; height: 260px; }
+.podium-box { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; opacity: 0; animation: popUp 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; width: 110px; }
+.podium-avatar { font-size: 4rem; margin-bottom: 5px; animation: floatAnim 2s infinite ease-in-out; text-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+.podium-step { width: 100%; border-radius: 16px 16px 0 0; display: flex; flex-direction: column; align-items: center; padding-top: 15px; color: var(--navy); font-weight: 900; font-size: 1.8rem; box-shadow: 0 -5px 20px rgba(0,0,0,0.4); position: relative; overflow: hidden; }
+.podium-step::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, transparent 100%); }
+
+/* ลำดับการเด้ง (สร้างความลุ้น) */
+.rank-2 { animation-delay: 0.5s; z-index: 2; } /* ที่ 2 มาก่อน */
+.rank-3 { animation-delay: 1.2s; z-index: 1; } /* ที่ 3 ตามมา */
+.rank-1 { animation-delay: 2.2s; z-index: 3; } /* ที่ 1 มาสุดท้ายแบบอลังการ */
+
+/* ตกแต่งแต่ละอันดับ */
+.rank-2 .podium-step { height: 120px; background: linear-gradient(to top, #757f9a, #d7dde8); }
+.rank-3 .podium-step { height: 90px; background: linear-gradient(to top, #b87333, #ffb372); }
+.rank-1 .podium-step { height: 170px; background: linear-gradient(to top, #ff8008, #ffc837); box-shadow: 0 -5px 30px rgba(255, 200, 55, 0.6); }
+
+.rank-1 .podium-avatar { font-size: 6rem; transform-origin: bottom; animation: floatAnim1st 2s infinite ease-in-out; }
+.podium-name { color: #fff; font-size: 1rem; font-weight: 700; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 100%; margin-bottom: 2px; }
+.podium-score { color: var(--yellow); font-size: 0.9rem; font-weight: 600; background: rgba(0,0,0,0.3); padding: 2px 10px; border-radius: 10px; margin-bottom: 8px; }
+.rank-1 .podium-name { font-size: 1.3rem; color: var(--gold); text-shadow: 0 0 10px rgba(255,215,0,0.8); }
+
+@keyframes popUp { 0% { opacity: 0; transform: translateY(80px) scale(0.8); } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes floatAnim { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes floatAnim1st { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-12px) scale(1.05); } }
+
+/* กล่องรายชื่อคนที่ 4 เป็นต้นไป */
+.runner-up-list { width: 100%; max-width: 500px; margin: 0 auto; animation: fadeUp 1s ease 3s both; }
+
 </style>
 </head>
 <body>
@@ -433,7 +463,47 @@ async function hostNextQ() {
       await sbClient.from('rooms').update({status: 'ended'}).eq('room_code', h_roomCode);
     }
     showHostScreen('host-final');
-    document.getElementById('h-final-lb').innerHTML = document.getElementById('h-lb-list').innerHTML;
+    
+    // ======== แอนิเมชัน Podium สำหรับ Gen Z ========
+    const sorted = Object.values(h_players).sort((a,b) => (b.score||0) - (a.score||0));
+    const p1 = sorted[0], p2 = sorted[1], p3 = sorted[2];
+    
+    let html = `<div class="podium-wrap">`;
+    // สร้างที่ 2 (ซ้าย)
+    if(p2) html += `<div class="podium-box rank-2"><div class="podium-name">${p2.name}</div><div class="podium-score">⭐ ${p2.score||0}</div><div class="podium-avatar">${p2.avatar||'👦'}</div><div class="podium-step">2</div></div>`;
+    // สร้างที่ 1 (กลาง)
+    if(p1) html += `<div class="podium-box rank-1"><div class="podium-name">${p1.name}</div><div class="podium-score">⭐ ${p1.score||0}</div><div class="podium-avatar">${p1.avatar||'👦'}</div><div class="podium-step">👑</div></div>`;
+    // สร้างที่ 3 (ขวา)
+    if(p3) html += `<div class="podium-box rank-3"><div class="podium-name">${p3.name}</div><div class="podium-score">⭐ ${p3.score||0}</div><div class="podium-avatar">${p3.avatar||'👦'}</div><div class="podium-step">3</div></div>`;
+    html += `</div>`;
+    
+    // สร้างรายชื่อที่ 4 เป็นต้นไป
+    html += `<div class="runner-up-list">`;
+    for(let i=3; i<sorted.length; i++) {
+        html += `<div class="lb-row" style="background:rgba(255,255,255,.08)"><b>${i+1}</b> ${sorted[i].avatar||'👦'} ${sorted[i].name} <span style="margin-left:auto;color:var(--yellow)">⭐ ${sorted[i].score||0}</span></div>`;
+    }
+    html += `</div>`;
+    
+    document.getElementById('h-final-lb').innerHTML = html;
+    
+    // โหลด Script พลุกระดาษ (Confetti) แล้วยิงตอนที่ 1 ปรากฏตัว
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js';
+    script.onload = () => {
+        // ยิงพลุหลังจากดีเลย์ไป 2.5 วินาที (รอที่ 1 เด้งขึ้นมาพอดี)
+        setTimeout(() => {
+            var duration = 3000;
+            var end = Date.now() + duration;
+            (function frame() {
+                confetti({ particleCount: 5, angle: 60, spread: 55, origin: { x: 0 }, colors: ['#ff3366', '#39ff14', '#00f5ff', '#ffd700'] });
+                confetti({ particleCount: 5, angle: 120, spread: 55, origin: { x: 1 }, colors: ['#ff3366', '#39ff14', '#00f5ff', '#ffd700'] });
+                if (Date.now() < end) requestAnimationFrame(frame);
+            }());
+        }, 2500); 
+    };
+    document.body.appendChild(script);
+    // ===========================================
+
   } else { hostLoadQ(); }
 }
 
