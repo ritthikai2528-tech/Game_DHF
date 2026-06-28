@@ -339,6 +339,18 @@ window.onload = () => {
 };
 
 /* ==========================================
+   AUDIO SYSTEM (ระบบเสียง)
+========================================== */
+// 1. ดนตรีตอนเล่นเกม (ตื่นเต้น เร้าใจ)
+const GAME_BGM = new Audio('https://assets.mixkit.co/active_storage/sfx/2000/2000-preview.mp3');
+GAME_BGM.loop = true;  // ให้เล่นวนซ้ำจนกว่าจะจบเกม
+GAME_BGM.volume = 0.4; // ความดัง 40% จะได้ไม่กลบเสียงครู
+
+// 2. เสียงตอนประกาศผลชนะเลิศ (อลังการ)
+const WIN_SFX = new Audio('https://assets.mixkit.co/active_storage/sfx/143/143-preview.mp3');
+WIN_SFX.volume = 0.8;  // ความดัง 80%
+
+/* ==========================================
    HOST MODE LOGIC (Supabase)
 ========================================== */
 let h_isDemo = false, h_roomCode = '', h_roomChannel = null;
@@ -409,6 +421,10 @@ async function hostStartGame() {
     await sbClient.from('rooms').update({status: 'playing'}).eq('room_code', h_roomCode);
   }
   showHostScreen('host-game');
+  
+  // 🎵 เปิดดนตรีประกอบตอนเริ่มเกม (ใส่ catch ไว้กันเบราว์เซอร์บล็อกเสียง)
+  GAME_BGM.play().catch(e => console.log("รอการคลิกจากผู้ใช้เพื่อเล่นเสียง"));
+  
   hostLoadQ();
 }
 
@@ -463,6 +479,11 @@ async function hostNextQ() {
       await sbClient.from('rooms').update({status: 'ended'}).eq('room_code', h_roomCode);
     }
     showHostScreen('host-final');
+
+    // 🎵 ปิดเพลงตอนเล่น และเปิดเสียงตอนรับรางวัล
+    GAME_BGM.pause();
+    GAME_BGM.currentTime = 0;
+    WIN_SFX.play().catch(e => console.log(e));
     
     // ======== แอนิเมชัน Podium สำหรับ Gen Z ========
     const sorted = Object.values(h_players).sort((a,b) => (b.score||0) - (a.score||0));
@@ -509,6 +530,11 @@ async function hostNextQ() {
 
 async function hostReset() {
   if(h_timer) clearInterval(h_timer);
+  
+  // 🎵 ปิดและรีเซ็ตเสียงทั้งหมด
+  GAME_BGM.pause(); GAME_BGM.currentTime = 0;
+  WIN_SFX.pause(); WIN_SFX.currentTime = 0;
+
   if(sbClient && h_roomChannel) sbClient.removeChannel(h_roomChannel);
   if(sbClient && !h_isDemo && h_roomCode) {
     await sbClient.from('rooms').delete().eq('room_code', h_roomCode);
