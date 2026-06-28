@@ -397,7 +397,17 @@ async function hostLoadQ() {
   if(h_timer) clearInterval(h_timer);
   h_timer = setInterval(() => {
     h_timeLeft--; document.getElementById('h-timer').textContent = h_timeLeft;
-    if(h_timeLeft <= 0) { clearInterval(h_timer); hostReveal(); }
+    
+    // เมื่อเวลาหมด (เหลือ 0 หรือน้อยกว่า)
+    if(h_timeLeft <= 0) { 
+      clearInterval(h_timer); // หยุดตัวนับเวลา
+      hostReveal(); // แสดงเฉลยทันที
+      
+      // หน่วงเวลา 4 วินาที (4000 มิลลิวินาที) ให้เด็กๆ ดูเฉลย แล้วเปลี่ยนข้ออัตโนมัติ
+      setTimeout(() => {
+        hostNextQ(); 
+      }, 4000); 
+    }
   }, 1000);
   
   if(h_isDemo) setTimeout(() => { h_players['d1'].score+=10; h_players['d2'].score+=15; hostRenderLB(); }, 2000);
