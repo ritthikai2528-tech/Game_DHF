@@ -7,7 +7,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
 <!-- Supabase & Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
 <style>
@@ -21,8 +20,7 @@
   --card:rgba(255,255,255,.06); --border:rgba(255,255,255,.12);
   --txt:#e8f4ff; --txt2:rgba(232,244,255,.6);
 }
-html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:var(--txt);overflow:hidden;}
-#three-bg{position:fixed;inset:0;z-index:0;pointer-events:none}
+html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:var(--txt);overflow-x:hidden;}
 
 /* ============ APP CONTAINERS ============ */
 .app-mode { display:none; width:100%; height:100%; overflow-y:auto; overflow-x:hidden; position:relative; z-index:10; }
@@ -41,48 +39,17 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
 .btn-ghost{background:rgba(255,255,255,.07);border:1.5px solid var(--border);color:var(--txt);padding:12px 24px;font-size:.9rem}
 .fade-in{animation:fadeUp .4s ease both}
 @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:24px;}
 
 /* ============ HUB SCREEN ============ */
 .hub-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;text-align:center;}
 .hub-title{font-size:clamp(2rem,8vw,3.2rem);font-weight:900;background:linear-gradient(90deg,var(--neon),var(--neon2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
 .hub-cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-top:30px;max-width:800px}
-.hub-card{background:var(--card);border:2px solid var(--border);border-radius:24px;padding:30px 24px;width:240px;cursor:pointer;transition:all .3s}
+.hub-card{background:var(--card);border:2px solid var(--border);border-radius:24px;padding:30px 24px;width:260px;cursor:pointer;transition:all .3s}
 .hub-card:hover{border-color:var(--neon);transform:translateY(-10px);box-shadow:0 10px 30px rgba(0,245,255,.2);background:rgba(0,245,255,.05)}
 .hub-icon{font-size:4rem;margin-bottom:16px;display:block}
 .hub-card h3{color:var(--yellow);font-size:1.4rem;margin-bottom:8px}
 .hub-card p{color:var(--txt2);font-size:.9rem;line-height:1.5}
-
-/* ============ SOLO APP CSS ============ */
-.solo-screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;min-height:100vh}
-.solo-screen.active{display:flex}
-.panel{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:24px;}
-#hud{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,15,30,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:8px 16px;display:none;align-items:center;gap:12px;}
-#hud.visible{display:flex}
-.hud-chip{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:.8rem;font-weight:700;display:flex;align-items:center;gap:5px}
-.xp-bar-wrap{flex:1;max-width:120px;height:5px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
-.xp-bar-fill{height:100%;background:linear-gradient(90deg,var(--neon2),var(--neon));transition:width .6s ease}
-.menu-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;width:100%;max-width:400px}
-.menu-btn{background:var(--card);border:1.5px solid var(--border);border-radius:16px;padding:14px 20px;color:var(--txt);font-family:'Kanit',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:12px;text-align:left}
-.menu-btn:hover{border-color:var(--neon);background:rgba(0,245,255,.06);transform:translateX(4px)}
-.char-grid,.mini-grid{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin:20px 0}
-.char-card,.mini-card{background:var(--card);border:2px solid var(--border);border-radius:20px;padding:20px 16px;cursor:pointer;transition:all .25s;text-align:center;min-width:120px}
-.char-card:hover,.char-card.selected,.mini-card:hover{border-color:var(--neon);background:rgba(0,245,255,.08)}
-.mission-scene{position:relative;width:100%;max-width:500px;aspect-ratio:4/3;background:linear-gradient(180deg,#87ceeb 0%,#87ceeb 40%,#4a7c4e 40%,#3d6e42 60%,#8B6914 60%);border-radius:24px;border:2px solid var(--border);cursor:crosshair;overflow:hidden}
-.scene-item{position:absolute;font-size:1.8rem;cursor:pointer;transition:transform .15s}
-.scene-item.found{opacity:0;pointer-events:none}
-.tap-arena{position:relative;width:100%;max-width:460px;height:340px;background:linear-gradient(135deg,#1a2a1a,#0f1f0f);border-radius:24px;border:2px solid var(--border);overflow:hidden;cursor:pointer}
-.hazard-item{position:absolute;cursor:pointer;transition:transform .1s;user-select:none}
-.trash-item{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:10px;font-size:1.6rem;cursor:grab;margin:5px;display:inline-block}
-.bin{background:var(--card);border:2.5px solid var(--border);border-radius:16px;padding:12px;text-align:center;min-width:90px;cursor:pointer;margin:5px;display:inline-block}
-.lid-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:400px;margin:16px auto}
-.lid-cell{aspect-ratio:1;background:var(--card);border:2px solid var(--border);border-radius:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:2.2rem;flex-direction:column}
-.lid-cell.open{border-color:var(--red);background:rgba(255,51,102,.1)}
-.lid-cell.closed{border-color:var(--green);background:rgba(57,255,20,.08)}
-.quiz-opt{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:12px;font-family:'Kanit',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--txt);margin-bottom:8px}
-.quiz-opt.correct{border-color:var(--green);background:rgba(57,255,20,.12)}
-.quiz-opt.wrong{border-color:var(--red);background:rgba(255,51,102,.1)}
-#god-bar{position:fixed;bottom:0;left:0;right:0;z-index:999;background:rgba(10,15,30,.92);padding:8px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;}
-.god-btn{background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--txt);font-size:.72rem;cursor:pointer}
 
 /* ============ HOST APP CSS ============ */
 .host-screen{display:none;padding:24px;min-height:100vh;flex-direction:column;align-items:center;}
@@ -119,9 +86,6 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
 </head>
 <body>
 
-<!-- BACKGROUND -->
-<canvas id="three-bg"></canvas>
-
 <!-- ==========================================
      MAIN HUB (เลือกโหมดการใช้งาน)
 =========================================== -->
@@ -131,106 +95,19 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
     <p style="color:var(--txt2); font-size:1.1rem">แพลตฟอร์มการเรียนรู้และป้องกันโรคไข้เลือดออกครบวงจร</p>
     
     <div class="hub-cards">
-      <!-- 1. Solo Mode -->
-      <div class="hub-card" onclick="launchMode('solo')">
-        <span class="hub-icon">🎮</span>
-        <h3>เล่นโหมดผจญภัย</h3>
-        <p>เล่นคนเดียว ตะลุยภารกิจ สะสมเหรียญตรา และมินิเกมความรู้ 4 ด่าน</p>
-      </div>
-      <!-- 2. Host Mode -->
+      <!-- 1. Host Mode -->
       <div class="hub-card" onclick="launchMode('host')">
         <span class="hub-icon">👨‍🏫</span>
         <h3>ห้องควบคุมครู</h3>
         <p>สร้างห้องเรียน สร้าง QR Code สำหรับกิจกรรมกลุ่ม และดูคะแนนแบบสดๆ</p>
       </div>
-      <!-- 3. Player Mode -->
+      <!-- 2. Player Mode -->
       <div class="hub-card" onclick="launchMode('player')">
         <span class="hub-icon">📱</span>
         <h3>เข้าร่วมห้องเรียน</h3>
         <p>สแกน QR หรือใส่รหัสห้อง เพื่อร่วมเล่นเกมตอบคำถามพร้อมกันกับเพื่อนๆ</p>
       </div>
     </div>
-  </div>
-</div>
-
-<!-- ==========================================
-     SOLO MODE (Single Player)
-=========================================== -->
-<div id="solo-mode" class="app-mode">
-  <div id="hud">
-    <div class="hud-chip">🦟 <span id="hud-stage">หน้าหลัก</span></div>
-    <div class="hud-chip">⭐ <span id="hud-score">0</span></div>
-    <div class="hud-chip" style="color:var(--neon)">Lv.<span id="hud-lv">1</span></div>
-    <div class="xp-bar-wrap"><div class="xp-bar-fill" id="hud-xp" style="width:0%"></div></div>
-    <button class="btn btn-ghost" style="padding:4px 12px;font-size:0.7rem;margin-left:auto" onclick="launchMode('hub')">🏠 ออก</button>
-  </div>
-
-  <div id="solo-home" class="solo-screen active fade-in">
-    <div style="text-align:center">
-      <span style="font-size:5rem;display:block;margin-bottom:10px">🦟</span>
-      <h1 style="font-size:2.5rem;color:var(--neon);margin-bottom:20px">พิชิตยุงลาย</h1>
-      <div class="menu-grid">
-        <button class="menu-btn" onclick="showSoloScreen('solo-char')">🎮 เริ่มเล่นมินิเกม</button>
-        <button class="menu-btn" onclick="showSoloScreen('solo-mission');initMission()">🔍 โหมดภารกิจค้นหา</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="solo-char" class="solo-screen">
-    <h2>เลือกนักรบต้านยุง</h2>
-    <div class="char-grid">
-      <div class="char-card selected" onclick="selectChar(this,'👦','สมชาย')" data-char="👦">
-        <span style="font-size:3rem">👦</span><h4>สมชาย</h4>
-      </div>
-      <div class="char-card" onclick="selectChar(this,'👧','สมหญิง')" data-char="👧">
-        <span style="font-size:3rem">👧</span><h4>สมหญิง</h4>
-      </div>
-    </div>
-    <button class="btn btn-neon" onclick="showSoloScreen('solo-mini-select');document.getElementById('hud').classList.add('visible')">ลุยเลย!</button>
-  </div>
-
-  <div id="solo-mini-select" class="solo-screen">
-    <h2>เลือกมินิเกม</h2>
-    <div class="mini-grid">
-      <div class="mini-card" onclick="goMini(1)"><span style="font-size:2rem">🏠</span><h4>1: เก็บบ้าน</h4></div>
-      <div class="mini-card" onclick="goMini(2)"><span style="font-size:2rem">♻️</span><h4>2: แยกขยะ</h4></div>
-      <div class="mini-card" onclick="goMini(3)"><span style="font-size:2rem">💧</span><h4>3: เก็บน้ำ</h4></div>
-      <div class="mini-card" onclick="goMini(4)"><span style="font-size:2rem">📝</span><h4>4: Quiz</h4></div>
-    </div>
-    <button class="btn btn-ghost" onclick="showSoloScreen('solo-home');document.getElementById('hud').classList.remove('visible')">กลับหน้าหลัก</button>
-  </div>
-
-  <!-- SOLO MISSION (Hidden Object) -->
-  <div id="solo-mission" class="solo-screen">
-    <h3>🔍 ค้นหาแหล่งเพาะพันธุ์ยุง</h3>
-    <div style="color:var(--yellow);margin-bottom:10px">เวลา: <span id="mission-timer">01:30</span></div>
-    <div class="mission-scene" id="mission-scene" onclick="missClick(event)">
-      <div style="position:absolute;bottom:30%;left:50%;font-size:4rem">🏠</div>
-    </div>
-    <button class="btn btn-ghost" style="margin-top:20px" onclick="showSoloScreen('solo-home')">กลับ</button>
-  </div>
-
-  <!-- SOLO MINI 1 -->
-  <div id="solo-mini1" class="solo-screen">
-    <h3 style="color:var(--neon)">🏠 เก็บบ้าน (แตะแหล่งน้ำขัง)</h3>
-    <div style="margin-bottom:10px">เวลา: <span id="m1-timer">30</span> | คะแนน: <span id="m1-score">0</span></div>
-    <div class="tap-arena" id="tap-arena"></div>
-    <button class="btn btn-ghost" style="margin-top:20px" onclick="showSoloScreen('solo-mini-select')">กลับ</button>
-  </div>
-
-  <!-- SOLO MINI 4 (Quiz Placeholder) -->
-  <div id="solo-quiz" class="solo-screen">
-    <h3 style="color:var(--neon)">📝 ทดสอบความรู้</h3>
-    <div class="panel" style="width:100%;max-width:400px;text-align:center">
-      <div id="solo-quiz-q" style="font-size:1.2rem;margin-bottom:20px">คำถาม...</div>
-      <div id="solo-quiz-opts" style="display:flex;flex-direction:column;gap:10px"></div>
-    </div>
-    <button class="btn btn-ghost" style="margin-top:20px" onclick="showSoloScreen('solo-mini-select')">กลับ</button>
-  </div>
-  
-  <div id="god-bar">
-    <button class="god-btn" onclick="godAddScore()">⚡ +100⭐</button>
-    <button class="god-btn" onclick="godAddXP()">⚡ +200XP</button>
   </div>
 </div>
 
@@ -405,7 +282,6 @@ function launchMode(mode) {
 
 // Auto-route based on URL params (for players scanning QR)
 window.onload = () => {
-  initThreeJS();
   const params = new URLSearchParams(window.location.search);
   if(params.get('mode') === 'player') {
     launchMode('player');
@@ -414,74 +290,6 @@ window.onload = () => {
     p_sbCfgStr = params.get('sbCfg');
   }
 };
-
-/* ==========================================
-   THREE.JS COSMIC BACKGROUND
-========================================== */
-function initThreeJS() {
-  const canvas = document.getElementById('three-bg');
-  const renderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(window.innerWidth, window.innerHeight);
-
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
-  camera.position.z = 4;
-
-  const N = 2000;
-  const geo = new THREE.BufferGeometry();
-  const pos = new Float32Array(N*3), col = new Float32Array(N*3);
-  for(let i=0; i<N; i++) {
-    const r = 0.5 + Math.random()*2.5, a = Math.random()*Math.PI*2, h = (0.5-Math.random())*1.5;
-    pos[i*3] = Math.cos(a)*r; pos[i*3+1] = h; pos[i*3+2] = Math.sin(a)*r;
-    const t = Math.random();
-    col[i*3] = t*0.5; col[i*3+1] = 1-t*0.5; col[i*3+2] = 1; // Cyan to Purple
-  }
-  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
-  geo.setAttribute('color', new THREE.BufferAttribute(col,3));
-
-  const mat = new THREE.PointsMaterial({size:0.04, vertexColors:true, transparent:true, opacity:0.7, blending:THREE.AdditiveBlending, depthWrite:false});
-  const points = new THREE.Points(geo, mat);
-  scene.add(points);
-
-  let t = 0;
-  function animate() {
-    requestAnimationFrame(animate);
-    t += 0.005; points.rotation.y = t; points.rotation.x = Math.sin(t*0.5)*0.1;
-    renderer.render(scene, camera);
-  }
-  animate();
-  window.addEventListener('resize', () => { renderer.setSize(window.innerWidth, window.innerHeight); camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); });
-}
-
-/* ==========================================
-   SOLO MODE LOGIC
-========================================== */
-let soloState = { score:0, xp:0, lv:1 };
-function showSoloScreen(id) {
-  document.querySelectorAll('.solo-screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-}
-function selectChar(el, emoji, name) {
-  document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected'));
-  el.classList.add('selected');
-}
-function godAddScore() { soloState.score += 100; document.getElementById('hud-score').textContent = soloState.score; showToast('+100⭐'); }
-function godAddXP() { soloState.xp += 200; soloState.lv = Math.floor(soloState.xp/1000)+1; document.getElementById('hud-lv').textContent = soloState.lv; showToast('+200 XP'); }
-function goMini(n) {
-  if(n===1) { showSoloScreen('solo-mini1'); initSoloMini1(); }
-  else { showToast('ด่านอื่นๆ ใน Demo คลิกด่าน 1'); }
-}
-function initSoloMini1() {
-  const arena = document.getElementById('tap-arena'); arena.innerHTML = '';
-  let items = ['🪣','🛞','🪴','🏺','🫙'];
-  for(let i=0; i<5; i++) {
-    let el = document.createElement('div'); el.className='hazard-item'; el.textContent = items[i];
-    el.style.left = (10+Math.random()*70)+'%'; el.style.top = (10+Math.random()*70)+'%'; el.style.fontSize='2rem';
-    el.onclick = () => { el.style.display='none'; godAddScore(); };
-    arena.appendChild(el);
-  }
-}
 
 /* ==========================================
    HOST MODE LOGIC (Supabase)
