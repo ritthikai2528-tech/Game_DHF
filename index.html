@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ศูนย์รวมนักรบต้านยุง — ไข้เลือดออก (Supabase Edition)</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<!-- Supabase & Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<style>
+/* ============ GLOBAL RESET & TOKENS ============ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g1:#0a0f1e; --g2:#0d1b3e; --g3:#1a0a2e;
+  --neon:#00f5ff; --neon2:#bf5fff; --neon3:#ff6b35;
+  --gold:#ffd700; --green:#39ff14; --red:#ff3366;
+  --orange:#FF6B35; --teal:#4ECDC4; --yellow:#FFE66D; --navy:#1a2744;
+  --card:rgba(255,255,255,.06); --border:rgba(255,255,255,.12);
+  --txt:#e8f4ff; --txt2:rgba(232,244,255,.6);
+}
+html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:var(--txt);overflow:hidden;}
+#three-bg{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+/* ============ APP CONTAINERS ============ */
+.app-mode { display:none; width:100%; height:100%; overflow-y:auto; overflow-x:hidden; position:relative; z-index:10; }
+.app-mode.active { display:block; }
+
+/* ============ SHARED UI ============ */
+.btn{border:none;border-radius:50px;font-family:'Kanit',sans-serif;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;justify-content:center;position:relative;overflow:hidden}
+.btn::after{content:'';position:absolute;inset:0;background:rgba(255,255,255,.1);opacity:0;transition:opacity .15s}
+.btn:hover::after{opacity:1}
+.btn:active{transform:scale(.96)}
+.btn-neon{background:linear-gradient(135deg,var(--neon2),var(--neon));color:#000;padding:14px 32px;font-size:1rem;box-shadow:0 4px 24px rgba(0,245,255,.35)}
+.btn-primary{background:var(--yellow);color:var(--navy);padding:14px 32px;font-size:1rem;box-shadow:0 4px 20px rgba(255,230,109,.3)}
+.btn-teal{background:var(--teal);color:var(--navy);padding:12px 28px;font-size:1rem}
+.btn-success{background:var(--green);color:var(--navy);padding:12px 28px;font-size:1rem}
+.btn-danger{background:var(--red);color:#fff;padding:12px 24px;font-size:.95rem}
+.btn-ghost{background:rgba(255,255,255,.07);border:1.5px solid var(--border);color:var(--txt);padding:12px 24px;font-size:.9rem}
+.fade-in{animation:fadeUp .4s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+
+/* ============ HUB SCREEN ============ */
+.hub-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;text-align:center;}
+.hub-title{font-size:clamp(2rem,8vw,3.2rem);font-weight:900;background:linear-gradient(90deg,var(--neon),var(--neon2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:8px}
+.hub-cards{display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-top:30px;max-width:800px}
+.hub-card{background:var(--card);border:2px solid var(--border);border-radius:24px;padding:30px 24px;width:240px;cursor:pointer;transition:all .3s}
+.hub-card:hover{border-color:var(--neon);transform:translateY(-10px);box-shadow:0 10px 30px rgba(0,245,255,.2);background:rgba(0,245,255,.05)}
+.hub-icon{font-size:4rem;margin-bottom:16px;display:block}
+.hub-card h3{color:var(--yellow);font-size:1.4rem;margin-bottom:8px}
+.hub-card p{color:var(--txt2);font-size:.9rem;line-height:1.5}
+
+/* ============ SOLO APP CSS ============ */
+.solo-screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;min-height:100vh}
+.solo-screen.active{display:flex}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:24px;}
+#hud{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(10,15,30,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--border);padding:8px 16px;display:none;align-items:center;gap:12px;}
+#hud.visible{display:flex}
+.hud-chip{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:4px 12px;font-size:.8rem;font-weight:700;display:flex;align-items:center;gap:5px}
+.xp-bar-wrap{flex:1;max-width:120px;height:5px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
+.xp-bar-fill{height:100%;background:linear-gradient(90deg,var(--neon2),var(--neon));transition:width .6s ease}
+.menu-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;width:100%;max-width:400px}
+.menu-btn{background:var(--card);border:1.5px solid var(--border);border-radius:16px;padding:14px 20px;color:var(--txt);font-family:'Kanit',sans-serif;font-size:1rem;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:12px;text-align:left}
+.menu-btn:hover{border-color:var(--neon);background:rgba(0,245,255,.06);transform:translateX(4px)}
+.char-grid,.mini-grid{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;margin:20px 0}
+.char-card,.mini-card{background:var(--card);border:2px solid var(--border);border-radius:20px;padding:20px 16px;cursor:pointer;transition:all .25s;text-align:center;min-width:120px}
+.char-card:hover,.char-card.selected,.mini-card:hover{border-color:var(--neon);background:rgba(0,245,255,.08)}
+.mission-scene{position:relative;width:100%;max-width:500px;aspect-ratio:4/3;background:linear-gradient(180deg,#87ceeb 0%,#87ceeb 40%,#4a7c4e 40%,#3d6e42 60%,#8B6914 60%);border-radius:24px;border:2px solid var(--border);cursor:crosshair;overflow:hidden}
+.scene-item{position:absolute;font-size:1.8rem;cursor:pointer;transition:transform .15s}
+.scene-item.found{opacity:0;pointer-events:none}
+.tap-arena{position:relative;width:100%;max-width:460px;height:340px;background:linear-gradient(135deg,#1a2a1a,#0f1f0f);border-radius:24px;border:2px solid var(--border);overflow:hidden;cursor:pointer}
+.hazard-item{position:absolute;cursor:pointer;transition:transform .1s;user-select:none}
+.trash-item{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:10px;font-size:1.6rem;cursor:grab;margin:5px;display:inline-block}
+.bin{background:var(--card);border:2.5px solid var(--border);border-radius:16px;padding:12px;text-align:center;min-width:90px;cursor:pointer;margin:5px;display:inline-block}
+.lid-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:400px;margin:16px auto}
+.lid-cell{aspect-ratio:1;background:var(--card);border:2px solid var(--border);border-radius:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:2.2rem;flex-direction:column}
+.lid-cell.open{border-color:var(--red);background:rgba(255,51,102,.1)}
+.lid-cell.closed{border-color:var(--green);background:rgba(57,255,20,.08)}
+.quiz-opt{background:var(--card);border:2px solid var(--border);border-radius:14px;padding:12px;font-family:'Kanit',sans-serif;font-size:.9rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--txt);margin-bottom:8px}
+.quiz-opt.correct{border-color:var(--green);background:rgba(57,255,20,.12)}
+.quiz-opt.wrong{border-color:var(--red);background:rgba(255,51,102,.1)}
+#god-bar{position:fixed;bottom:0;left:0;right:0;z-index:999;background:rgba(10,15,30,.92);padding:8px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap;}
+.god-btn{background:rgba(255,255,255,.07);border:1px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--txt);font-size:.72rem;cursor:pointer}
+
+/* ============ HOST APP CSS ============ */
+.host-screen{display:none;padding:24px;min-height:100vh;flex-direction:column;align-items:center;}
+.host-screen.active{display:flex;}
+.setup-card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:32px;max-width:480px;width:100%}
+.input-group{margin-bottom:16px;text-align:left}
+.input-group label{display:block;font-size:.85rem;color:rgba(255,255,255,.6);margin-bottom:6px}
+.input-group input,.input-group select{width:100%;background:rgba(255,255,255,.08);border:1.5px solid var(--border);border-radius:12px;padding:12px 16px;font-family:'Kanit',sans-serif;color:#fff;outline:none}
+.lobby-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:1000px;width:100%;margin-top:20px}
+.qr-panel, .players-panel{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:28px;text-align:center}
+.game-layout{display:grid;grid-template-columns:340px 1fr;gap:24px;max-width:1100px;width:100%}
+.question-panel, .leaderboard-panel{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:28px}
+.choice-display{border-radius:12px;padding:12px 14px;font-size:.9rem;font-weight:600;display:flex;align-items:center;gap:8px;border:2px solid transparent;margin-bottom:8px;background:rgba(255,255,255,.05)}
+.choice-display.correct{background:rgba(126,217,87,.25);border-color:var(--green)}
+.lb-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.04);margin-bottom:8px}
+
+/* ============ PLAYER APP CSS ============ */
+.player-screen{display:none;width:100%;max-width:480px;min-height:100vh;padding:24px 20px;flex-direction:column;align-items:center;justify-content:center;text-align:center;margin:0 auto}
+.player-screen.active{display:flex}
+.avatar-row{display:flex;gap:10px;justify-content:center;margin-bottom:16px;flex-wrap:wrap}
+.avatar-btn{font-size:1.8rem;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.1);border-radius:12px;padding:8px;cursor:pointer}
+.avatar-btn.selected{border-color:var(--teal);background:rgba(78,205,196,.15)}
+.opt-btn{width:100%;border:none;border-radius:16px;padding:14px 12px;font-family:'Kanit',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left;margin-bottom:10px;background:rgba(255,255,255,.1);color:#fff;border:2px solid transparent}
+.opt-btn.correct{background:rgba(126,217,87,.3)!important;border-color:var(--green)!important}
+.opt-btn.wrong{background:rgba(231,76,60,.25)!important;border-color:var(--red)!important}
+.timer-circle-wrap{position:relative;width:70px;height:70px;margin:0 auto 14px}
+.timer-circle-wrap svg{transform:rotate(-90deg)}
+.timer-text{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.4rem;font-weight:800;color:var(--yellow)}
+
+/* ============ GLOBAL TOAST ============ */
+.global-toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:var(--yellow);color:var(--navy);border-radius:30px;padding:10px 24px;font-weight:800;font-size:1rem;z-index:9999;animation:toastIn .4s ease forwards;display:none}
+@keyframes toastIn{0%{opacity:0;transform:translateX(-50%) scale(.7)}60%{transform:translateX(-50%) scale(1.08)}100%{opacity:1;transform:translateX(-50%) scale(1)}}
+</style>
+</head>
+<body>
+
+<!-- BACKGROUND -->
+<canvas id="three-bg"></canvas>
+
+<!-- ==========================================
+     MAIN HUB (เลือกโหมดการใช้งาน)
+=========================================== -->
+<div id="hub-mode" class="app-mode active">
+  <div class="hub-wrap fade-in">
+    <div class="hub-title">ศูนย์รวมนักรบต้านยุง</div>
+    <p style="color:var(--txt2); font-size:1.1rem">แพลตฟอร์มการเรียนรู้และป้องกันโรคไข้เลือดออกครบวงจร</p>
+    
+    <div class="hub-cards">
+      <!-- 1. Solo Mode -->
+      <div class="hub-card" onclick="launchMode('solo')">
+        <span class="hub-icon">🎮</span>
+        <h3>เล่นโหมดผจญภัย</h3>
+        <p>เล่นคนเดียว ตะลุยภารกิจ สะสมเหรียญตรา และมินิเกมความรู้ 4 ด่าน</p>
+      </div>
+      <!-- 2. Host Mode -->
+      <div class="hub-card" onclick="launchMode('host')">
+        <span class="hub-icon">👨‍🏫</span>
+        <h3>ห้องควบคุมครู</h3>
+        <p>สร้างห้องเรียน สร้าง QR Code สำหรับกิจกรรมกลุ่ม และดูคะแนนแบบสดๆ</p>
+      </div>
+      <!-- 3. Player Mode -->
+      <div class="hub-card" onclick="launchMode('player')">
+        <span class="hub-icon">📱</span>
+        <h3>เข้าร่วมห้องเรียน</h3>
+        <p>สแกน QR หรือใส่รหัสห้อง เพื่อร่วมเล่นเกมตอบคำถามพร้อมกันกับเพื่อนๆ</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================
+     SOLO MODE (Single Player)
+=========================================== -->
+<div id="solo-mode" class="app-mode">
+  <div id="hud">
+    <div class="hud-chip">🦟 <span id="hud-stage">หน้าหลัก</span></div>
+    <div class="hud-chip">⭐ <span id="hud-score">0</span></div>
+    <div class="hud-chip" style="color:var(--neon)">Lv.<span id="hud-lv">1</span></div>
+    <div class="xp-bar-wrap"><div class="xp-bar-fill" id="hud-xp" style="width:0%"></div></div>
+    <button class="btn btn-ghost" style="padding:4px 12px;font-size:0.7rem;margin-left:auto" onclick="launchMode('hub')">🏠 ออก</button>
+  </div>
+
+  <div id="solo-home" class="solo-screen active fade-in">
+    <div style="text-align:center">
+      <span style="font-size:5rem;display:block;margin-bottom:10px">🦟</span>
+      <h1 style="font-size:2.5rem;color:var(--neon);margin-bottom:20px">พิชิตยุงลาย</h1>
+      <div class="menu-grid">
+        <button class="menu-btn" onclick="showSoloScreen('solo-char')">🎮 เริ่มเล่นมินิเกม</button>
+        <button class="menu-btn" onclick="showSoloScreen('solo-mission');initMission()">🔍 โหมดภารกิจค้นหา</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="solo-char" class="solo-screen">
+    <h2>เลือกนักรบต้านยุง</h2>
+    <div class="char-grid">
+      <div class="char-card selected" onclick="selectChar(this,'👦','สมชาย')" data-char="👦">
+        <span style="font-size:3rem">👦</span><h4>สมชาย</h4>
+      </div>
+      <div class="char-card" onclick="selectChar(this,'👧','สมหญิง')" data-char="👧">
+        <span style="font-size:3rem">👧</span><h4>สมหญิง</h4>
+      </div>
+    </div>
+    <button class="btn btn-neon" onclick="showSoloScreen('solo-mini-select');document.getElementById('hud').classList.add('visible')">ลุยเลย!</button>
+  </div>
+
+  <div id="solo-mini-select" class="solo-screen">
+    <h2>เลือกมินิเกม</h2>
+    <div class="mini-grid">
+      <div class="mini-card" onclick="goMini(1)"><span style="font-size:2rem">🏠</span><h4>1: เก็บบ้าน</h4></div>
+      <div class="mini-card" onclick="goMini(2)"><span style="font-size:2rem">♻️</span><h4>2: แยกขยะ</h4></div>
+      <div class="mini-card" onclick="goMini(3)"><span style="font-size:2rem">💧</span><h4>3: เก็บน้ำ</h4></div>
+      <div class="mini-card" onclick="goMini(4)"><span style="font-size:2rem">📝</span><h4>4: Quiz</h4></div>
+    </div>
+    <button class="btn btn-ghost" onclick="showSoloScreen('solo-home');document.getElementById('hud').classList.remove('visible')">กลับหน้าหลัก</button>
+  </div>
+
+  <!-- SOLO MISSION (Hidden Object) -->
+  <div id="solo-mission" class="solo-screen">
+    <h3>🔍 ค้นหาแหล่งเพาะพันธุ์ยุง</h3>
+    <div style="color:var(--yellow);margin-bottom:10px">เวลา: <span id="mission-timer">01:30</span></div>
+    <div class="mission-scene" id="mission-scene" onclick="missClick(event)">
+      <div style="position:absolute;bottom:30%;left:50%;font-size:4rem">🏠</div>
+    </div>
+    <button class="btn btn-ghost" style="margin-top:20px" onclick="showSoloScreen('solo-home')">กลับ</button>
+  </div>
+
+  <!-- SOLO MINI 1 -->
+  <div id="solo-mini1" class="solo-screen">
+    <h3 style="color:var(--neon)">🏠 เก็บบ้าน (แตะแหล่งน้ำขัง)</h3>
+    <div style="margin-bottom:10px">เวลา: <span id="m1-timer">30</span> | คะแนน: <span id="m1-score">0</span></div>
+    <div class="tap-arena" id="tap-arena"></div>
+    <button class="btn btn-ghost" style="margin-top:20px" onclick="showSoloScreen('solo-mini-select')">กลับ</button>
+  </div>
+
+  <!-- SOLO MINI 4 (Quiz Placeholder) -->
+  <div id="solo-quiz" class="solo-screen">
+    <h3 style="color:var(--neon)">📝 ทดสอบความรู้</h3>
+    <div class="panel" style="width:100%;max-width:400px;text-align:center">
+      <div id="solo-quiz-q" style="font-size:1.2rem;margin-bottom:20px">คำถาม...</div>
+      <div id="solo-quiz-opts" style="display:flex;flex-direction:column;gap:10px"></div>
+    </div>
+    <button class="btn btn-ghost" style="margin-top:20px" onclick="showSoloScreen('solo-mini-select')">กลับ</button>
+  </div>
+  
+  <div id="god-bar">
+    <button class="god-btn" onclick="godAddScore()">⚡ +100⭐</button>
+    <button class="god-btn" onclick="godAddXP()">⚡ +200XP</button>
+  </div>
+</div>
+
+<!-- ==========================================
+     HOST MODE (Teacher Control)
+=========================================== -->
+<div id="host-mode" class="app-mode">
+  <!-- Host Setup -->
+  <div id="host-setup" class="host-screen active fade-in">
+    <button class="btn btn-ghost" style="position:absolute;top:20px;left:20px" onclick="launchMode('hub')">🏠 กลับเมนูหลัก</button>
+    <span style="font-size:4rem;margin-bottom:10px">👨‍🏫</span>
+    <h1 style="color:var(--yellow);margin-bottom:20px">ห้องควบคุมครู</h1>
+    <div class="setup-card">
+      <div class="input-group">
+        <label>ชื่อห้องเรียน</label>
+        <input type="text" id="host-room-name" value="ป.4 นักรบต้านยุง">
+      </div>
+      <div class="input-group">
+        <label>เวลาต่อข้อ (วินาที)</label>
+        <select id="host-time"><option value="15">15</option><option value="20" selected>20</option><option value="30">30</option></select>
+      </div>
+      <div class="input-group">
+        <label>Supabase Config JSON (หรือเว้นว่างเพื่อใช้ Demo)</label>
+        <input type="text" id="host-sb-config" placeholder='{"url":"https://...","key":"..."}'>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="hostCreateRoom(false)">สร้างห้อง (Supabase)</button>
+      <button class="btn btn-teal" style="width:100%;margin-top:10px" onclick="hostCreateRoom(true)">🧪 ทดสอบ Demo Mode (ไม่ต้องใช้เน็ต)</button>
+    </div>
+  </div>
+
+  <!-- Host Lobby -->
+  <div id="host-lobby" class="host-screen">
+    <div style="max-width:1000px;width:100%">
+      <div style="display:flex;justify-content:space-between;margin-bottom:20px">
+        <h2 id="lobby-room-title" style="color:var(--yellow)">ห้องเรียน</h2>
+        <div>
+          <button class="btn btn-success" onclick="hostStartGame()">▶ เริ่มเกม!</button>
+          <button class="btn btn-danger" onclick="hostReset()">✕ ยกเลิก</button>
+        </div>
+      </div>
+      <div class="lobby-grid">
+        <div class="qr-panel">
+          <h3 style="color:var(--teal);margin-bottom:10px">📱 ให้นักเรียนสแกน QR</h3>
+          <div style="background:#fff;padding:16px;border-radius:16px;display:inline-block" id="host-qr"></div>
+          <h1 style="color:var(--yellow);letter-spacing:4px;margin:10px 0" id="host-code-display">---</h1>
+          <p>นักเรียน: <strong id="host-player-count" style="color:var(--green);font-size:1.5rem">0</strong> คน</p>
+        </div>
+        <div class="players-panel">
+          <h3 style="color:var(--green);margin-bottom:10px">นักเรียนที่เข้าร่วม</h3>
+          <div id="host-player-list" style="max-height:300px;overflow-y:auto;text-align:left"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Host Game -->
+  <div id="host-game" class="host-screen">
+    <div class="game-layout">
+      <div class="question-panel">
+        <div id="h-q-number" style="color:var(--yellow);margin-bottom:10px">คำถามที่ 1</div>
+        <h3 id="h-q-text" style="margin-bottom:20px">...</h3>
+        <div style="font-size:3rem;color:var(--teal);text-align:center;margin-bottom:20px" id="h-timer">20</div>
+        <div id="h-options"></div>
+        <div style="margin-top:20px;display:flex;gap:10px">
+           <button class="btn btn-teal" onclick="hostReveal()">เฉลย</button>
+           <button class="btn btn-success" onclick="hostNextQ()">ข้อต่อไป</button>
+        </div>
+      </div>
+      <div class="leaderboard-panel">
+        <h3 style="color:var(--yellow);margin-bottom:10px">🏆 คะแนนสด</h3>
+        <div id="h-lb-list"></div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Host Final -->
+  <div id="host-final" class="host-screen">
+    <h1 style="font-size:3rem;color:var(--yellow)">จบเกม!</h1>
+    <div id="h-final-lb" style="margin:20px 0;width:100%;max-width:500px"></div>
+    <button class="btn btn-primary" onclick="hostReset()">กลับหน้าสร้างห้อง</button>
+  </div>
+</div>
+
+<!-- ==========================================
+     PLAYER MODE (Student Device)
+=========================================== -->
+<div id="player-mode" class="app-mode">
+  <!-- Player Join -->
+  <div id="player-join" class="player-screen active fade-in">
+    <button class="btn btn-ghost" style="position:absolute;top:20px;left:20px" onclick="launchMode('hub')">🏠</button>
+    <span style="font-size:4rem;margin-bottom:10px">📱</span>
+    <h1 style="color:var(--yellow);margin-bottom:20px">เข้าร่วมห้อง</h1>
+    <div class="panel" style="width:100%">
+      <input type="text" id="p-room-code" placeholder="รหัสห้อง (เช่น ABC12)" style="width:100%;padding:14px;border-radius:12px;border:none;margin-bottom:10px;text-align:center;font-size:1.2rem;text-transform:uppercase">
+      <input type="text" id="p-name" placeholder="ชื่อเล่น" style="width:100%;padding:14px;border-radius:12px;border:none;margin-bottom:20px;text-align:center;font-size:1.1rem">
+      <div class="avatar-row">
+        <button class="avatar-btn selected" data-avatar="👦" onclick="pSelectAvatar(this)">👦</button>
+        <button class="avatar-btn" data-avatar="👧" onclick="pSelectAvatar(this)">👧</button>
+        <button class="avatar-btn" data-avatar="🦸" onclick="pSelectAvatar(this)">🦸</button>
+      </div>
+      <button class="btn btn-primary" style="width:100%" onclick="playerJoin()">เข้าเล่นเลย!</button>
+    </div>
+  </div>
+
+  <!-- Player Waiting -->
+  <div id="player-waiting" class="player-screen">
+    <span style="font-size:5rem;animation:fadeUp 1s infinite alternate">⏳</span>
+    <h2 style="color:var(--yellow)">รอครูเริ่มเกม...</h2>
+    <p id="p-badge" style="margin-top:10px;font-size:1.2rem;background:rgba(255,255,255,.1);padding:10px;border-radius:20px"></p>
+  </div>
+
+  <!-- Player Question -->
+  <div id="player-question" class="player-screen">
+    <div class="timer-circle-wrap">
+      <svg width="70" height="70" viewBox="0 0 70 70">
+        <circle cx="35" cy="35" r="30" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="5"/>
+        <circle id="p-timer-circle" cx="35" cy="35" r="30" fill="none" stroke="var(--teal)" stroke-width="5" stroke-dasharray="188" stroke-dashoffset="0"/>
+      </svg>
+      <div class="timer-text" id="p-timer-text">20</div>
+    </div>
+    <h3 id="p-q-text" style="margin-bottom:20px">...</h3>
+    <div id="p-options" style="width:100%"></div>
+    <div id="p-feedback" style="margin-top:20px;font-size:1.2rem;font-weight:700"></div>
+  </div>
+
+  <!-- Player Result -->
+  <div id="player-result" class="player-screen">
+    <span style="font-size:5rem">🏆</span>
+    <h1 style="color:var(--yellow)">เก่งมาก!</h1>
+    <div style="font-size:4rem;font-weight:900" id="p-final-score">0</div>
+    <p>คะแนนรวม</p>
+    <button class="btn btn-primary" style="margin-top:30px" onclick="launchMode('hub')">กลับเมนูหลัก</button>
+  </div>
+</div>
+
+<div class="global-toast" id="global-toast"></div>
+
+<script>
+/* ==========================================
+   GLOBAL DATA & UTILS
+========================================== */
+const GAME_STAGES = [
+  { id:1, label:'ด่าน 1', title:'รู้จักยุงลายร้าย', questions:[
+    {text:'ยุงชนิดใดเป็นพาหะแพร่โรคไข้เลือดออก?', options:['ยุงก้นปล่อง','ยุงลาย','ยุงรำคาญ','ยุงเสือ'], correct:1},
+    {text:'ยุงลายชอบวางไข่ในที่แบบใด?', options:['น้ำเน่าในคลอง','น้ำนิ่งสะอาดในภาชนะ','น้ำไหลในแม่น้ำ','น้ำทะเล'], correct:1}
+  ]},
+  { id:2, label:'ด่าน 2', title:'ป้องกันตัวจากยุง', questions:[
+    {text:'"3 เก็บ 3 โรค" หมายถึงอะไร?', options:['เก็บเงิน/ทอง/อาหาร','เก็บบ้าน/ขยะ/น้ำ','เก็บหนังสือ/ดินสอ','เก็บดอกไม้/ต้นไม้'], correct:1},
+    {text:'วิธีใดป้องกันยุงกัดขณะนอนหลับได้ดีที่สุด?', options:['ห่มผ้าหนักๆ','นอนในมุ้งหรือห้องมุ้งลวด','เปิดไฟทิ้งไว้','นอนใต้พัดลมแรง'], correct:1}
+  ]}
+];
+
+function showToast(msg) {
+  const t = document.getElementById('global-toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2500);
+}
+
+// Global Supabase Client
+let sbClient = null;
+
+function launchMode(mode) {
+  document.querySelectorAll('.app-mode').forEach(el => el.classList.remove('active'));
+  document.getElementById(mode + '-mode').classList.add('active');
+  if(mode === 'hub') {
+    if(h_timer) clearInterval(h_timer);
+    if(p_timer) clearInterval(p_timer);
+    if(sbClient && h_roomChannel) sbClient.removeChannel(h_roomChannel);
+    if(sbClient && p_roomChannel) sbClient.removeChannel(p_roomChannel);
+  }
+}
+
+// Auto-route based on URL params (for players scanning QR)
+window.onload = () => {
+  initThreeJS();
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('mode') === 'player') {
+    launchMode('player');
+    document.getElementById('p-room-code').value = params.get('room') || '';
+    p_isDemo = params.get('demo') === '1';
+    p_sbCfgStr = params.get('sbCfg');
+  }
+};
+
+/* ==========================================
+   THREE.JS COSMIC BACKGROUND
+========================================== */
+function initThreeJS() {
+  const canvas = document.getElementById('three-bg');
+  const renderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+  camera.position.z = 4;
+
+  const N = 2000;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(N*3), col = new Float32Array(N*3);
+  for(let i=0; i<N; i++) {
+    const r = 0.5 + Math.random()*2.5, a = Math.random()*Math.PI*2, h = (0.5-Math.random())*1.5;
+    pos[i*3] = Math.cos(a)*r; pos[i*3+1] = h; pos[i*3+2] = Math.sin(a)*r;
+    const t = Math.random();
+    col[i*3] = t*0.5; col[i*3+1] = 1-t*0.5; col[i*3+2] = 1; // Cyan to Purple
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color', new THREE.BufferAttribute(col,3));
+
+  const mat = new THREE.PointsMaterial({size:0.04, vertexColors:true, transparent:true, opacity:0.7, blending:THREE.AdditiveBlending, depthWrite:false});
+  const points = new THREE.Points(geo, mat);
+  scene.add(points);
+
+  let t = 0;
+  function animate() {
+    requestAnimationFrame(animate);
+    t += 0.005; points.rotation.y = t; points.rotation.x = Math.sin(t*0.5)*0.1;
+    renderer.render(scene, camera);
+  }
+  animate();
+  window.addEventListener('resize', () => { renderer.setSize(window.innerWidth, window.innerHeight); camera.aspect = window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); });
+}
+
+/* ==========================================
+   SOLO MODE LOGIC
+========================================== */
+let soloState = { score:0, xp:0, lv:1 };
+function showSoloScreen(id) {
+  document.querySelectorAll('.solo-screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function selectChar(el, emoji, name) {
+  document.querySelectorAll('.char-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+function godAddScore() { soloState.score += 100; document.getElementById('hud-score').textContent = soloState.score; showToast('+100⭐'); }
+function godAddXP() { soloState.xp += 200; soloState.lv = Math.floor(soloState.xp/1000)+1; document.getElementById('hud-lv').textContent = soloState.lv; showToast('+200 XP'); }
+function goMini(n) {
+  if(n===1) { showSoloScreen('solo-mini1'); initSoloMini1(); }
+  else { showToast('ด่านอื่นๆ ใน Demo คลิกด่าน 1'); }
+}
+function initSoloMini1() {
+  const arena = document.getElementById('tap-arena'); arena.innerHTML = '';
+  let items = ['🪣','🛞','🪴','🏺','🫙'];
+  for(let i=0; i<5; i++) {
+    let el = document.createElement('div'); el.className='hazard-item'; el.textContent = items[i];
+    el.style.left = (10+Math.random()*70)+'%'; el.style.top = (10+Math.random()*70)+'%'; el.style.fontSize='2rem';
+    el.onclick = () => { el.style.display='none'; godAddScore(); };
+    arena.appendChild(el);
+  }
+}
+
+/* ==========================================
+   HOST MODE LOGIC (Supabase)
+========================================== */
+let h_isDemo = false, h_roomCode = '', h_roomChannel = null;
+let h_players = {}, h_stageIdx = 0, h_qIdx = 0, h_time = 20, h_timer = null, h_timeLeft = 0;
+
+function showHostScreen(id) {
+  document.querySelectorAll('.host-screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+async function hostCreateRoom(isDemo) {
+  h_isDemo = isDemo;
+  const name = document.getElementById('host-room-name').value;
+  h_time = parseInt(document.getElementById('host-time').value);
+  h_roomCode = Math.random().toString(36).substr(2,5).toUpperCase();
+  h_players = {};
+  
+  let sbCfgStr = document.getElementById('host-sb-config').value.trim();
+  
+  if(!h_isDemo && sbCfgStr) {
+    try {
+      const cfg = JSON.parse(sbCfgStr);
+      sbClient = window.supabase.createClient(cfg.url, cfg.key);
+      
+      const { error } = await sbClient.from('rooms').insert([{ 
+        room_code: h_roomCode, name: name, status: 'lobby', timePerQ: h_time, stageIdx: 0, qIdx: 0
+      }]);
+      
+      if(error) throw error;
+
+      h_roomChannel = sbClient.channel('host-room')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `room_code=eq.${h_roomCode}` }, payload => {
+          const p = payload.new;
+          if (p && p.id) {
+            h_players[p.id] = p;
+            hostRenderPlayers();
+            hostRenderLB();
+          }
+        }).subscribe();
+        
+    } catch(e) { 
+      console.error(e);
+      alert('Supabase Error: ตรวจสอบ Config JSON, Table Schema หรือ RLS Policies'); 
+      return; 
+    }
+  } else if (h_isDemo) {
+    setTimeout(() => { h_players = {'d1':{name:'ด.ช.สมชาย',score:0}, 'd2':{name:'ด.ญ.สมหญิง',score:0}}; hostRenderPlayers(); }, 1000);
+  }
+  
+  document.getElementById('lobby-room-title').textContent = name;
+  document.getElementById('host-code-display').textContent = h_roomCode;
+  
+  const base = window.location.href.split('?')[0];
+  const url = base + `?mode=player&room=${h_roomCode}${h_isDemo?'&demo=1':''}&sbCfg=${encodeURIComponent(sbCfgStr)}`;
+  
+  document.getElementById('host-qr').innerHTML = '';
+  new QRCode(document.getElementById('host-qr'), { text: url, width: 200, height: 200, colorDark: '#1a2744' });
+  showHostScreen('host-lobby');
+}
+
+function hostRenderPlayers() {
+  const list = document.getElementById('host-player-list');
+  list.innerHTML = Object.values(h_players).map(p => `<div class="lb-row">${p.avatar||'👦'} ${p.name} (พร้อม)</div>`).join('');
+  document.getElementById('host-player-count').textContent = Object.keys(h_players).length;
+}
+
+async function hostStartGame() {
+  h_stageIdx = 0; h_qIdx = 0;
+  if(sbClient && !h_isDemo) {
+    await sbClient.from('rooms').update({status: 'playing'}).eq('room_code', h_roomCode);
+  }
+  showHostScreen('host-game');
+  hostLoadQ();
+}
+
+async function hostLoadQ() {
+  const q = GAME_STAGES[h_stageIdx].questions[h_qIdx];
+  document.getElementById('h-q-number').textContent = `ด่าน ${h_stageIdx+1} - คำถาม ${h_qIdx+1}`;
+  document.getElementById('h-q-text').textContent = q.text;
+  document.getElementById('h-options').innerHTML = q.options.map((o,i) => `<div class="choice-display" id="h-opt-${i}">${['A','B','C','D'][i]}. ${o}</div>`).join('');
+  
+  if(sbClient && !h_isDemo) {
+    await sbClient.from('rooms').update({stageIdx: h_stageIdx, qIdx: h_qIdx, status: 'question'}).eq('room_code', h_roomCode);
+  }
+  
+  h_timeLeft = h_time;
+  document.getElementById('h-timer').textContent = h_timeLeft;
+  if(h_timer) clearInterval(h_timer);
+  h_timer = setInterval(() => {
+    h_timeLeft--; document.getElementById('h-timer').textContent = h_timeLeft;
+    if(h_timeLeft <= 0) { clearInterval(h_timer); hostReveal(); }
+  }, 1000);
+  
+  if(h_isDemo) setTimeout(() => { h_players['d1'].score+=10; h_players['d2'].score+=15; hostRenderLB(); }, 2000);
+  hostRenderLB();
+}
+
+function hostRenderLB() {
+  const sorted = Object.values(h_players).sort((a,b) => (b.score||0) - (a.score||0));
+  document.getElementById('h-lb-list').innerHTML = sorted.map((p,i) => `<div class="lb-row"><b>${i+1}</b> ${p.avatar||'👦'} ${p.name} <span style="margin-left:auto;color:var(--yellow)">⭐ ${p.score||0}</span></div>`).join('');
+}
+
+function hostReveal() {
+  clearInterval(h_timer);
+  const q = GAME_STAGES[h_stageIdx].questions[h_qIdx];
+  document.getElementById(`h-opt-${q.correct}`).classList.add('correct');
+}
+
+async function hostNextQ() {
+  h_qIdx++;
+  if(h_qIdx >= GAME_STAGES[h_stageIdx].questions.length) { h_stageIdx++; h_qIdx = 0; }
+  if(h_stageIdx >= GAME_STAGES.length) { 
+    if(sbClient && !h_isDemo) {
+      await sbClient.from('rooms').update({status: 'ended'}).eq('room_code', h_roomCode);
+    }
+    showHostScreen('host-final');
+    document.getElementById('h-final-lb').innerHTML = document.getElementById('h-lb-list').innerHTML;
+  } else { hostLoadQ(); }
+}
+
+async function hostReset() {
+  if(h_timer) clearInterval(h_timer);
+  if(sbClient && h_roomChannel) sbClient.removeChannel(h_roomChannel);
+  if(sbClient && !h_isDemo && h_roomCode) {
+    await sbClient.from('rooms').delete().eq('room_code', h_roomCode);
+  }
+  showHostScreen('host-setup');
+}
+
+/* ==========================================
+   PLAYER MODE LOGIC (Supabase)
+========================================== */
+let p_isDemo = false, p_id = 'p_'+Date.now(), p_avatar = '👦';
+let p_score = 0, p_stageIdx = 0, p_qIdx = 0, p_timer = null, p_timeLeft = 20, p_answered = false;
+let p_sbCfgStr = '', p_roomCode = '', p_roomChannel = null;
+
+function showPlayerScreen(id) {
+  document.querySelectorAll('.player-screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function pSelectAvatar(el) {
+  document.querySelectorAll('.avatar-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected'); p_avatar = el.dataset.avatar;
+}
+
+async function playerJoin() {
+  p_roomCode = document.getElementById('p-room-code').value.toUpperCase();
+  const name = document.getElementById('p-name').value;
+  if(!p_roomCode || !name) return showToast('กรอกข้อมูลให้ครบถ้วน');
+  
+  document.getElementById('p-badge').textContent = `${p_avatar} ${name}`;
+  
+  if(p_isDemo) { showPlayerScreen('player-waiting'); setTimeout(() => pStartQ(0,0,20), 2000); return; }
+  
+  if(p_sbCfgStr) {
+    try {
+      if(!sbClient) {
+        const cfg = JSON.parse(decodeURIComponent(p_sbCfgStr));
+        sbClient = window.supabase.createClient(cfg.url, cfg.key);
+      }
+      
+      const { error } = await sbClient.from('players').insert([{ 
+        id: p_id, room_code: p_roomCode, name: name, avatar: p_avatar, score: 0 
+      }]);
+      
+      if(error) throw error;
+      
+      showPlayerScreen('player-waiting');
+      
+      p_roomChannel = sbClient.channel('player-room')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `room_code=eq.${p_roomCode}` }, payload => {
+          const d = payload.new;
+          if(d.status === 'question') pStartQ(d.stageIdx, d.qIdx, d.timePerQ || 20);
+          if(d.status === 'ended') { showPlayerScreen('player-result'); document.getElementById('p-final-score').textContent = p_score; }
+        }).subscribe();
+
+    } catch(e) { 
+      console.error(e);
+      p_isDemo = true; showToast('เชื่อมต่อ Supabase ล้มเหลว สลับเป็น Demo Mode');
+      showPlayerScreen('player-waiting'); setTimeout(() => pStartQ(0,0,20), 2000); 
+    }
+  }
+}
+
+function pStartQ(sIdx, qIdx, time) {
+  p_stageIdx = sIdx; p_qIdx = qIdx; p_answered = false; p_timeLeft = time;
+  const q = GAME_STAGES[sIdx].questions[qIdx];
+  document.getElementById('p-q-text').textContent = q.text;
+  document.getElementById('p-feedback').textContent = '';
+  document.getElementById('p-options').innerHTML = q.options.map((o,i) => `<button class="opt-btn" onclick="pAnswer(${i}, ${q.correct})">${['A','B','C','D'][i]}. ${o}</button>`).join('');
+  
+  showPlayerScreen('player-question');
+  
+  const circle = document.getElementById('p-timer-circle');
+  circle.style.strokeDashoffset = 0;
+  if(p_timer) clearInterval(p_timer);
+  p_timer = setInterval(() => {
+    p_timeLeft--; document.getElementById('p-timer-text').textContent = p_timeLeft;
+    circle.style.strokeDashoffset = (1 - p_timeLeft/time) * 188;
+    if(p_timeLeft <= 0) { clearInterval(p_timer); if(!p_answered) pAnswer(-1, q.correct); }
+  }, 1000);
+}
+
+async function pAnswer(idx, correctIdx) {
+  if(p_answered) return; p_answered = true; clearInterval(p_timer);
+  const btns = document.getElementById('p-options').children;
+  for(let i=0; i<btns.length; i++) {
+    btns[i].disabled = true;
+    if(i === correctIdx) btns[i].classList.add('correct');
+    else if(i === idx) btns[i].classList.add('wrong');
+  }
+  const fb = document.getElementById('p-feedback');
+  if(idx === correctIdx) {
+    p_score += 10; fb.textContent = '✅ ถูกต้อง! +10'; fb.style.color = 'var(--green)';
+    if(sbClient && !p_isDemo) {
+      await sbClient.from('players').update({score: p_score}).eq('id', p_id);
+    }
+  } else {
+    fb.textContent = idx===-1 ? '⏰ หมดเวลา!' : '❌ ไม่ถูก!'; fb.style.color = 'var(--red)';
+  }
+  setTimeout(() => showPlayerScreen('player-waiting'), 2500);
+  
+  if(p_isDemo) setTimeout(() => {
+    let nq = p_qIdx+1, ns = p_stageIdx;
+    if(nq >= GAME_STAGES[ns].questions.length) { ns++; nq = 0; }
+    if(ns >= GAME_STAGES.length) { showPlayerScreen('player-result'); document.getElementById('p-final-score').textContent = p_score; }
+    else pStartQ(ns, nq, 20);
+  }, 3500);
+}
+</script>
+</body>
+</html>
