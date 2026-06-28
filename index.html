@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>ศูนย์รวมนักรบต้านยุง — ไข้เลือดออก (Supabase Edition)</title>
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
-<!-- Supabase & Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -69,9 +68,13 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
 /* ============ PLAYER APP CSS ============ */
 .player-screen{display:none;width:100%;max-width:480px;min-height:100vh;padding:24px 20px;flex-direction:column;align-items:center;justify-content:center;text-align:center;margin:0 auto}
 .player-screen.active{display:flex}
-.avatar-row{display:flex;gap:10px;justify-content:center;margin-bottom:16px;flex-wrap:wrap}
-.avatar-btn{font-size:1.8rem;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.1);border-radius:12px;padding:8px;cursor:pointer}
-.avatar-btn.selected{border-color:var(--teal);background:rgba(78,205,196,.15)}
+.avatar-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(45px,1fr));gap:8px;max-height:160px;overflow-y:auto;margin-bottom:16px;padding:4px}
+.avatar-row::-webkit-scrollbar { width: 6px; }
+.avatar-row::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
+.avatar-row::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+.avatar-btn{font-size:1.5rem;background:rgba(255,255,255,.06);border:2px solid rgba(255,255,255,.1);border-radius:12px;padding:6px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center}
+.avatar-btn:hover{background:rgba(255,255,255,.1)}
+.avatar-btn.selected{border-color:var(--teal);background:rgba(78,205,196,.15);transform:scale(1.05)}
 .opt-btn{width:100%;border:none;border-radius:16px;padding:14px 12px;font-family:'Kanit',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left;margin-bottom:10px;background:rgba(255,255,255,.1);color:#fff;border:2px solid transparent}
 .opt-btn.correct{background:rgba(126,217,87,.3)!important;border-color:var(--green)!important}
 .opt-btn.wrong{background:rgba(231,76,60,.25)!important;border-color:var(--red)!important}
@@ -86,22 +89,17 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
 </head>
 <body>
 
-<!-- ==========================================
-     MAIN HUB (เลือกโหมดการใช้งาน)
-=========================================== -->
 <div id="hub-mode" class="app-mode active">
   <div class="hub-wrap fade-in">
     <div class="hub-title">ศูนย์รวมนักรบต้านยุง</div>
     <p style="color:var(--txt2); font-size:1.1rem">แพลตฟอร์มการเรียนรู้และป้องกันโรคไข้เลือดออกครบวงจร</p>
     
     <div class="hub-cards">
-      <!-- 1. Host Mode -->
       <div class="hub-card" onclick="launchMode('host')">
         <span class="hub-icon">👨‍🏫</span>
         <h3>ห้องควบคุมครู</h3>
         <p>สร้างห้องเรียน สร้าง QR Code สำหรับกิจกรรมกลุ่ม และดูคะแนนแบบสดๆ</p>
       </div>
-      <!-- 2. Player Mode -->
       <div class="hub-card" onclick="launchMode('player')">
         <span class="hub-icon">📱</span>
         <h3>เข้าร่วมห้องเรียน</h3>
@@ -111,11 +109,7 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
   </div>
 </div>
 
-<!-- ==========================================
-     HOST MODE (Teacher Control)
-=========================================== -->
 <div id="host-mode" class="app-mode">
-  <!-- Host Setup -->
   <div id="host-setup" class="host-screen active fade-in">
     <button class="btn btn-ghost" style="position:absolute;top:20px;left:20px" onclick="launchMode('hub')">🏠 กลับเมนูหลัก</button>
     <span style="font-size:4rem;margin-bottom:10px">👨‍🏫</span>
@@ -123,7 +117,7 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
     <div class="setup-card">
       <div class="input-group">
         <label>ชื่อห้องเรียน</label>
-        <input type="text" id="host-room-name" value="นักรบต้านยุง">
+        <input type="text" id="host-room-name" value="ป.4 นักรบต้านยุง">
       </div>
       <div class="input-group">
         <label>เวลาต่อข้อ (วินาที)</label>
@@ -138,7 +132,6 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
     </div>
   </div>
 
-  <!-- Host Lobby -->
   <div id="host-lobby" class="host-screen">
     <div style="max-width:1000px;width:100%">
       <div style="display:flex;justify-content:space-between;margin-bottom:20px">
@@ -163,7 +156,6 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
     </div>
   </div>
 
-  <!-- Host Game -->
   <div id="host-game" class="host-screen">
     <div class="game-layout">
       <div class="question-panel">
@@ -183,7 +175,6 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
     </div>
   </div>
   
-  <!-- Host Final -->
   <div id="host-final" class="host-screen">
     <h1 style="font-size:3rem;color:var(--yellow)">จบเกม!</h1>
     <div id="h-final-lb" style="margin:20px 0;width:100%;max-width:500px"></div>
@@ -191,35 +182,28 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
   </div>
 </div>
 
-<!-- ==========================================
-     PLAYER MODE (Student Device)
-=========================================== -->
 <div id="player-mode" class="app-mode">
-  <!-- Player Join -->
   <div id="player-join" class="player-screen active fade-in">
     <button class="btn btn-ghost" style="position:absolute;top:20px;left:20px" onclick="launchMode('hub')">🏠</button>
     <span style="font-size:4rem;margin-bottom:10px">📱</span>
     <h1 style="color:var(--yellow);margin-bottom:20px">เข้าร่วมห้อง</h1>
     <div class="panel" style="width:100%">
       <input type="text" id="p-room-code" placeholder="รหัสห้อง (เช่น ABC12)" style="width:100%;padding:14px;border-radius:12px;border:none;margin-bottom:10px;text-align:center;font-size:1.2rem;text-transform:uppercase">
-      <input type="text" id="p-name" placeholder="ชื่อเล่น" style="width:100%;padding:14px;border-radius:12px;border:none;margin-bottom:20px;text-align:center;font-size:1.1rem">
-      <div class="avatar-row">
-        <button class="avatar-btn selected" data-avatar="👦" onclick="pSelectAvatar(this)">👦</button>
-        <button class="avatar-btn" data-avatar="👧" onclick="pSelectAvatar(this)">👧</button>
-        <button class="avatar-btn" data-avatar="🦸" onclick="pSelectAvatar(this)">🦸</button>
-      </div>
+      <input type="text" id="p-name" placeholder="ชื่อเล่น" style="width:100%;padding:14px;border-radius:12px;border:none;margin-bottom:10px;text-align:center;font-size:1.1rem">
+      
+      <p style="text-align:left; font-size:0.85rem; color:var(--txt2); margin-bottom:6px">เลือกตัวละครของคุณ:</p>
+      <div class="avatar-row" id="p-avatar-list"></div>
+
       <button class="btn btn-primary" style="width:100%" onclick="playerJoin()">เข้าเล่นเลย!</button>
     </div>
   </div>
 
-  <!-- Player Waiting -->
   <div id="player-waiting" class="player-screen">
     <span style="font-size:5rem;animation:fadeUp 1s infinite alternate">⏳</span>
     <h2 style="color:var(--yellow)">รอครูเริ่มเกม...</h2>
     <p id="p-badge" style="margin-top:10px;font-size:1.2rem;background:rgba(255,255,255,.1);padding:10px;border-radius:20px"></p>
   </div>
 
-  <!-- Player Question -->
   <div id="player-question" class="player-screen">
     <div class="timer-circle-wrap">
       <svg width="70" height="70" viewBox="0 0 70 70">
@@ -233,7 +217,6 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
     <div id="p-feedback" style="margin-top:20px;font-size:1.2rem;font-weight:700"></div>
   </div>
 
-  <!-- Player Result -->
   <div id="player-result" class="player-screen">
     <span style="font-size:5rem">🏆</span>
     <h1 style="color:var(--yellow)">เก่งมาก!</h1>
@@ -250,26 +233,26 @@ html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:
    GLOBAL DATA: คำถาม 20 ข้อ
 ========================================== */
 const ALL_QUESTIONS = [
-  {text:'ยุงลายตัวเมียเป็นพาหะนำโรคใด?', options:['ไข้หวัดใหญ่','ไข้เลือดออก','มาลาเรีย','อหิวาตกโรค'], correct:1},
-  {text:'ยุงลายมักวางไข่ในที่ใด?', options:['น้ำเน่า','น้ำไหล','น้ำนิ่งสะอาด','น้ำเค็ม'], correct:2},
-  {text:'เราควรทำลายแหล่งเพาะพันธุ์ยุงทุกกี่วัน?', options:['3 วัน','5 วัน','7 วัน','10 วัน'], correct:2},
-  {text:'โรคไข้เลือดออกเกิดจากเชื้อไวรัสชนิดใด?', options:['เดงกี','โคโรนา','อินฟลูเอนซา','เอชไอวี'], correct:0},
-  {text:'อาการเด่นของโรคไข้เลือดออกคืออะไร?', options:['ไอเรื้อรัง','ไข้สูงเฉียบพลัน','ท้องเสีย','หูอื้อ'], correct:1},
-  {text:'ข้อใดไม่ใช่มาตรการ 3 เก็บ?', options:['เก็บบ้าน','เก็บขยะ','เก็บเงิน','เก็บน้ำ'], correct:2},
-  {text:'การนอนกางมุ้งช่วยอะไร?', options:['ป้องกันยุงกัด','กันหนาว','กันฝุ่น','ประหยัดไฟ'], correct:0},
-  {text:'ยุงลายออกหากินเวลาใดมากที่สุด?', options:['กลางคืน','กลางวัน','เวลาเช้ามืด','เวลาเที่ยงคืน'], correct:1},
-  {text:'ภาชนะใส่น้ำต้องทำอย่างไรจึงปลอดภัย?', options:['เปิดไว้','ปิดฝาให้มิดชิด','ตากแดด','ล้างด้วยน้ำส้ม'], correct:1},
-  {text:'ถ้ามีไข้สูงเกิน 2 วัน ควรทำอย่างไร?', options:['ซื้อยากินเอง','รีบไปพบแพทย์','นอนพัก','ดื่มน้ำหวาน'], correct:1},
-  {text:'ทรายอะเบทใช้ทำอะไร?', options:['กำจัดลูกน้ำ','ไล่ยุง','ฆ่าแมลงวัน','เพิ่มออกซิเจน'], correct:0},
-  {text:'ยุงลายมีลักษณะเด่นอย่างไร?', options:['ตัวสีน้ำตาล','ลายสีขาวที่ลำตัว','ลายจุดสีดำ','ตัวสีเขียว'], correct:1},
-  {text:'ข้อใดถือเป็นขยะที่เป็นแหล่งเพาะพันธุ์ยุง?', options:['เศษกระดาษ','แก้วพลาสติก/กระป๋อง','ถุงพลาสติก','เศษอาหาร'], correct:1},
-  {text:'ทำไมจึงไม่ควรใช้ยาแก้ปวดกลุ่มแอสไพรินเมื่อสงสัยว่าเป็นไข้เลือดออก?', options:['ยาขม','เลือดออกง่ายและหยุดยาก','ยาแพง','ยาไม่มีผล'], correct:1},
-  {text:'ปลาชนิดใดช่วยกินลูกน้ำในอ่างบัว?', options:['ปลากัด','ปลาทอง','ปลาคาร์ฟ','ปลาดุก'], correct:0},
-  {text:'แหล่งเพาะพันธุ์ยุงที่พบได้บ่อยที่สุดในบ้านคือ?', options:['ตู้เย็น','แจกัน/จานรองกระถาง','พัดลม','เตาแก๊ส'], correct:1},
-  {text:'ไข้เลือดออกถ้าไม่รักษาอาจทำให้เกิดภาวะใด?', options:['ช็อกเสียชีวิต','ความจำเสื่อม','ผมร่วง','ผิวหนังลอก'], correct:0},
-  {text:'การจัดบ้านให้โปร่งช่วยป้องกันยุงได้อย่างไร?', options:['ยุงไม่ชอบที่สว่าง','ยุงไม่มีที่เกาะพัก','บ้านจะสวยขึ้น','ลมพัดแรงขึ้น'], correct:1},
-  {text:'ใครมีโอกาสเสี่ยงเป็นไข้เลือดออก?', options:['เด็กเท่านั้น','ผู้ใหญ่เท่านั้น','ทุกเพศทุกวัย','เฉพาะคนแก่'], correct:2},
-  {text:'หัวใจสำคัญของการป้องกันโรคไข้เลือดออกคือ?', options:['การรักษา','การกำจัดยุงลาย','การฉีดวัคซีน','การกินยา'], correct:1}
+  {text:'ยุงลายตัวเมียเป็นพาหะนำโรคใด?', options:['มาลาเรีย','อหิวาตกโรค','ไข้เลือดออก','ไข้หวัดใหญ่'], correct:2},
+  {text:'ยุงลายมักวางไข่ในที่ใด?', options:['น้ำนิ่งสะอาด','น้ำเน่า','น้ำไหล','น้ำทะเล'], correct:0},
+  {text:'เราควรทำลายแหล่งเพาะพันธุ์ยุงทุกกี่วัน?', options:['10 วัน','3 วัน','7 วัน','5 วัน'], correct:2},
+  {text:'โรคไข้เลือดออกเกิดจากเชื้อไวรัสชนิดใด?', options:['อินฟลูเอนซา','เดงกี','เอชไอวี','โคโรนา'], correct:1},
+  {text:'อาการเด่นของโรคไข้เลือดออกคืออะไร?', options:['หูอื้อ','ไอเรื้อรัง','ไข้สูงเฉียบพลัน','ท้องเสีย'], correct:2},
+  {text:'ข้อใดไม่ใช่มาตรการ 3 เก็บ?', options:['เก็บเงิน','เก็บบ้าน','เก็บน้ำ','เก็บขยะ'], correct:0},
+  {text:'การนอนกางมุ้งช่วยอะไร?', options:['ประหยัดไฟ','กันฝุ่น','กันหนาว','ป้องกันยุงกัด'], correct:3},
+  {text:'ยุงลายออกหากินเวลาใดมากที่สุด?', options:['กลางคืน','เวลาเช้ามืด','กลางวัน','เวลาเที่ยงคืน'], correct:2},
+  {text:'ภาชนะใส่น้ำต้องทำอย่างไรจึงปลอดภัย?', options:['ตากแดด','ปิดฝาให้มิดชิด','ล้างด้วยน้ำส้ม','เปิดไว้'], correct:1},
+  {text:'ถ้ามีไข้สูงเกิน 2 วัน ควรทำอย่างไร?', options:['ดื่มน้ำหวาน','รีบไปพบแพทย์','ซื้อยากินเอง','นอนพัก'], correct:1},
+  {text:'ทรายอะเบทใช้ทำอะไร?', options:['ไล่ยุง','เพิ่มออกซิเจน','กำจัดลูกน้ำ','ฆ่าแมลงวัน'], correct:2},
+  {text:'ยุงลายมีลักษณะเด่นอย่างไร?', options:['ลายสีขาวที่ลำตัว','ตัวสีน้ำตาล','ตัวสีเขียว','ลายจุดสีดำ'], correct:0},
+  {text:'ข้อใดถือเป็นขยะที่เป็นแหล่งเพาะพันธุ์ยุง?', options:['ถุงพลาสติก','แก้วพลาสติก/กระป๋อง','เศษกระดาษ','เศษอาหาร'], correct:1},
+  {text:'ทำไมจึงไม่ควรใช้ยาแก้ปวดกลุ่มแอสไพรินเมื่อสงสัยว่าเป็นไข้เลือดออก?', options:['ยาขม','ยาไม่มีผล','เลือดออกง่ายและหยุดยาก','ยาแพง'], correct:2},
+  {text:'ปลาชนิดใดช่วยกินลูกน้ำในอ่างบัว?', options:['ปลาคาร์ฟ','ปลาดุก','ปลาทอง','ปลากัด'], correct:3},
+  {text:'แหล่งเพาะพันธุ์ยุงที่พบได้บ่อยที่สุดในบ้านคือ?', options:['แจกัน/จานรองกระถาง','ตู้เย็น','เตาแก๊ส','พัดลม'], correct:0},
+  {text:'ไข้เลือดออกถ้าไม่รักษาอาจทำให้เกิดภาวะใด?', options:['ผิวหนังลอก','ผมร่วง','ความจำเสื่อม','ช็อกเสียชีวิต'], correct:3},
+  {text:'การจัดบ้านให้โปร่งช่วยป้องกันยุงได้อย่างไร?', options:['บ้านจะสวยขึ้น','ลมพัดแรงขึ้น','ยุงไม่มีที่เกาะพัก','ยุงไม่ชอบที่สว่าง'], correct:2},
+  {text:'ใครมีโอกาสเสี่ยงเป็นไข้เลือดออก?', options:['ผู้ใหญ่เท่านั้น','เฉพาะคนแก่','ทุกเพศทุกวัย','เด็กเท่านั้น'], correct:2},
+  {text:'หัวใจสำคัญของการป้องกันโรคไข้เลือดออกคือ?', options:['การกำจัดยุงลาย','การฉีดวัคซีน','การรักษา','การกินยา'], correct:0}
 ];
 
 // ฟังก์ชันสุ่มและเลือกคำถาม
@@ -283,6 +266,14 @@ const SELECTED_QUESTIONS = getRandomQuestions(10);
 const GAME_STAGES = [
   { label:'ด่านความรู้', questions: SELECTED_QUESTIONS }
 ];
+
+// รายการ 30 ตัวละคร
+const AVATAR_LIST = [
+  '👦','👧','👨','👩','👴','👵','🦸','🦸‍♀️','🥷','🕵️',
+  '👮','👷','👩‍⚕️','👨‍⚕️','🐶','🐱','🐭','🐹','🐰','🦊',
+  '🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🦄'
+];
+
 function showToast(msg) {
   const t = document.getElementById('global-toast');
   t.textContent = msg; t.style.display = 'block';
@@ -303,8 +294,17 @@ function launchMode(mode) {
   }
 }
 
-// Auto-route based on URL params (for players scanning QR)
+// Auto-route based on URL params & Initialize Avatars
 window.onload = () => {
+  // สร้างปุ่มเลือกตัวละคร 30 แบบ
+  const avatarListDiv = document.getElementById('p-avatar-list');
+  if(avatarListDiv) {
+    avatarListDiv.innerHTML = AVATAR_LIST.map((emoji, index) => 
+      `<button class="avatar-btn ${index === 0 ? 'selected' : ''}" data-avatar="${emoji}" onclick="pSelectAvatar(this)">${emoji}</button>`
+    ).join('');
+    p_avatar = AVATAR_LIST[0]; // กำหนดค่าเริ่มต้นเป็นตัวแรก
+  }
+
   const params = new URLSearchParams(window.location.search);
   if(params.get('mode') === 'player') {
     launchMode('player');
@@ -361,7 +361,7 @@ async function hostCreateRoom(isDemo) {
       return; 
     }
   } else if (h_isDemo) {
-    setTimeout(() => { h_players = {'d1':{name:'ด.ช.สมชาย',score:0}, 'd2':{name:'ด.ญ.สมหญิง',score:0}}; hostRenderPlayers(); }, 1000);
+    setTimeout(() => { h_players = {'d1':{name:'ด.ช.สมชาย',score:0,avatar:'👦'}, 'd2':{name:'ด.ญ.สมหญิง',score:0,avatar:'👧'}}; hostRenderPlayers(); }, 1000);
   }
   
   document.getElementById('lobby-room-title').textContent = name;
@@ -455,6 +455,7 @@ function showPlayerScreen(id) {
   document.querySelectorAll('.player-screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
 }
+
 function pSelectAvatar(el) {
   document.querySelectorAll('.avatar-btn').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected'); p_avatar = el.dataset.avatar;
