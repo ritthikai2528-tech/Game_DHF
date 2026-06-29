@@ -1,460 +1,103 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Dengue Hunter Ultimate 2026</title>
-<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
-<style>
-/* ============ GLOBAL RESET & TOKENS ============ */
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --g1:#0a0f1e; --g2:#0d1b3e; --g3:#1a0a2e;
-  --neon:#00f5ff; --neon2:#bf5fff; --neon3:#ff6b35;
-  --gold:#ffd700; --green:#39ff14; --red:#ff3366; --blue:#007bff;
-  --orange:#FF6B35; --teal:#4ECDC4; --yellow:#FFE66D; --navy:#1a2744;
-  --card:rgba(255,255,255,.06); --border:rgba(255,255,255,.12);
-  --txt:#e8f4ff; --txt2:rgba(232,244,255,.6);
+grid.className = "memory-grid";
+  icons.forEach((icon,i)=>{
+    const b = document.createElement("button");
+    b.className = "memory-card";
+    b.dataset.icon = icon;
+    b.dataset.index = i;
+    b.textContent = "?";
+    b.onclick = () => flipMemory(b);
+    grid.appendChild(b);
+  });
+  arena.appendChild(grid);
 }
-html,body{height:100%;font-family:'Kanit',sans-serif;background:var(--g1);color:var(--txt);overflow-x:hidden;}
-
-/* ============ EFFECTS & ANIMATIONS ============ */
-@keyframes shake { 0%{transform:translate(1px,1px) rotate(0deg);} 10%{transform:translate(-1px,-2px) rotate(-1deg);} 20%{transform:translate(-3px,0px) rotate(1deg);} 30%{transform:translate(3px,2px) rotate(0deg);} 40%{transform:translate(1px,-1px) rotate(1deg);} 50%{transform:translate(-1px,2px) rotate(-1deg);} 60%{transform:translate(-3px,1px) rotate(0deg);} 70%{transform:translate(3px,1px) rotate(-1deg);} 80%{transform:translate(-1px,-1px) rotate(1deg);} 90%{transform:translate(1px,2px) rotate(0deg);} 100%{transform:translate(1px,-2px) rotate(-1deg);} }
-.screen-shake { animation: shake 0.5s; }
-.flash-effect { position:fixed; inset:0; background:rgba(255,255,255,0.8); z-index:9999; pointer-events:none; animation:flash 0.3s ease-out; }
-@keyframes flash { 0%{opacity:1;} 100%{opacity:0;} }
-.fire-mode-active { box-shadow: 0 0 20px 5px var(--orange) inset; border: 3px solid var(--red); animation: firePulse 1s infinite alternate; }
-@keyframes firePulse { from { box-shadow: 0 0 10px 2px var(--orange) inset; } to { box-shadow: 0 0 30px 10px var(--red) inset; } }
-
-/* ============ APP CONTAINERS ============ */
-.app-mode { display:none; width:100%; height:100%; overflow-y:auto; overflow-x:hidden; position:relative; z-index:10; }
-.app-mode.active { display:block; }
-.btn{border:none;border-radius:50px;font-family:'Kanit',sans-serif;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;justify-content:center;position:relative;overflow:hidden}
-.btn:active{transform:scale(.96)}
-.btn-primary{background:var(--yellow);color:var(--navy);padding:14px 32px;font-size:1rem;box-shadow:0 4px 20px rgba(255,230,109,.3)}
-.btn-teal{background:var(--teal);color:var(--navy);padding:12px 28px;font-size:1rem}
-.btn-success{background:var(--green);color:var(--navy);padding:12px 28px;font-size:1rem}
-.btn-danger{background:var(--red);color:#fff;padding:12px 24px;font-size:.95rem}
-.fade-in{animation:fadeUp .4s ease both}
-@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
-
-/* ============ BOSS & TEAM UI (HOST) ============ */
-.boss-arena { text-align:center; padding: 20px; background:linear-gradient(to bottom, rgba(255,51,102,0.2), transparent); border-bottom: 2px solid var(--red); margin-bottom:20px; border-radius: 0 0 30px 30px;}
-.boss-sprite { font-size: 5rem; margin-bottom: 10px; display:inline-block; transition: transform 0.2s; }
-.boss-hit { transform: scale(0.8) rotate(15deg); filter: hue-rotate(90deg) brightness(2); }
-.hp-bar-container { width: 80%; max-width: 600px; height: 30px; background: rgba(0,0,0,0.5); border: 2px solid var(--border); border-radius: 15px; margin: 0 auto; overflow: hidden; position: relative; }
-.hp-bar-fill { height: 100%; background: linear-gradient(90deg, #ff0844 0%, #ffb199 100%); width: 100%; transition: width 0.3s ease-out; }
-.hp-text { position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); font-weight: 900; color: white; text-shadow: 1px 1px 3px black; }
-
-.team-grid { display:grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
-.team-card { padding: 15px; border-radius: 15px; text-align: center; font-weight: 800; font-size: 1.2rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
-.team-red { background: var(--red); color: white; }
-.team-yellow { background: var(--yellow); color: var(--navy); }
-.team-blue { background: var(--blue); color: white; }
-.team-green { background: var(--green); color: var(--navy); }
-
-.ai-commentator { background: rgba(0,0,0,0.6); border-left: 4px solid var(--neon); padding: 15px; font-style: italic; color: var(--neon); margin: 10px 0; border-radius: 0 10px 10px 0; font-weight: 600; min-height: 55px; }
-
-/* ============ HOST & PLAYER LAYOUT ============ */
-.host-screen{display:none;padding:24px;min-height:100vh;flex-direction:column;}
-.host-screen.active{display:flex;}
-.lobby-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;max-width:1000px;width:100%;margin:20px auto}
-.game-layout{display:grid;grid-template-columns:2fr 1fr;gap:24px;max-width:1200px;width:100%; margin:0 auto;}
-.panel{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:24px;}
-.choice-display{border-radius:12px;padding:12px 14px;font-size:1.1rem;font-weight:600;display:flex;align-items:center;gap:8px;border:2px solid transparent;margin-bottom:8px;background:rgba(255,255,255,.05)}
-.choice-display.correct{background:rgba(126,217,87,.25);border-color:var(--green)}
-
-.player-screen{display:none;width:100%;max-width:480px;min-height:100vh;padding:24px 20px;flex-direction:column;align-items:center;justify-content:center;text-align:center;margin:0 auto}
-.player-screen.active{display:flex}
-.opt-btn{width:100%;border:none;border-radius:16px;padding:18px 12px;font-family:'Kanit',sans-serif;font-size:1.1rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left;margin-bottom:12px;background:rgba(255,255,255,.1);color:#fff;border:2px solid transparent}
-.opt-btn.correct{background:rgba(126,217,87,.3)!important;border-color:var(--green)!important}
-.opt-btn.wrong{background:rgba(231,76,60,.25)!important;border-color:var(--red)!important}
-.combo-ui { font-size: 1.5rem; font-weight: 900; color: var(--orange); text-shadow: 0 0 10px var(--red); display:none; margin-bottom:10px; animation: popUp 0.3s; }
-.team-indicator { padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; font-size: 0.9rem; }
-
-@keyframes popUp { 0% { transform: scale(0.5); opacity:0;} 100% { transform: scale(1); opacity:1;} }
-</style>
-</head>
-<body>
-
-<div id="hub-mode" class="app-mode active">
-  <div class="panel fade-in" style="max-width:600px; margin: 10vh auto; text-align:center;">
-    <h1 style="color:var(--neon); font-size:2.5rem; margin-bottom:10px;">🛡️ Dengue Hunter Ultimate</h1>
-    <p style="color:var(--txt2); margin-bottom:30px;">สุดยอดภารกิจปกป้องหมู่บ้านจากราชายุงลาย</p>
-    <div style="display:flex; gap:15px; justify-content:center;">
-      <button class="btn btn-teal" onclick="launchMode('host')">👨‍🏫 สร้างห้องภารกิจ</button>
-      <button class="btn btn-primary" onclick="launchMode('player')">📱 เข้าร่วมทีมล่า</button>
-    </div>
-  </div>
-</div>
-
-<div id="host-mode" class="app-mode">
-  <div id="host-setup" class="host-screen active fade-in" style="align-items:center; justify-content:center;">
-    <div class="panel" style="max-width: 400px; width:100%; text-align:center;">
-      <h2 style="color:var(--yellow); margin-bottom:20px;">ตั้งค่าภารกิจ</h2>
-      <input type="text" id="host-room-name" value="ป.4 นักรบต้านยุง" style="width:100%; padding:10px; margin-bottom:15px; border-radius:10px; border:none; text-align:center;">
-      <button class="btn btn-primary" style="width:100%" onclick="hostCreateRoom(true)">🚀 เริ่มโหมด Demo (รวดเร็ว)</button>
-    </div>
-  </div>
-
-  <div id="host-lobby" class="host-screen">
-    <div style="text-align:center;">
-      <h2 id="lobby-room-title" style="color:var(--yellow)">ห้องเรียน</h2>
-      <h1 style="color:var(--neon); letter-spacing:5px; font-size:3rem; margin:10px 0" id="host-code-display">---</h1>
-      <button class="btn btn-success" onclick="hostStartGame()">▶ ตะลุยบอสเลย!</button>
-    </div>
-    <div class="lobby-grid">
-      <div class="panel" style="text-align:center;">
-        <h3 style="color:var(--teal)">📱 สแกน QR</h3>
-        <div style="background:#fff;padding:16px;border-radius:16px;display:inline-block; margin-top:10px;" id="host-qr"></div>
-      </div>
-      <div class="panel">
-        <h3 style="color:var(--green)">นักรบที่เข้าร่วม (<span id="host-player-count">0</span>)</h3>
-        <div id="host-player-list" style="margin-top:10px; height:200px; overflow-y:auto; font-size:1.1rem;"></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="host-game" class="host-screen">
-    <div class="boss-arena">
-      <div class="boss-sprite" id="boss-sprite">👹</div>
-      <h2 id="boss-name" style="color:var(--red); margin-bottom:5px;">ราชายุงลายแห่งป่าดงดิบ</h2>
-      <div class="hp-bar-container">
-        <div class="hp-bar-fill" id="boss-hp-bar"></div>
-        <div class="hp-text" id="boss-hp-text">1000 / 1000</div>
-      </div>
-    </div>
-
-    <div class="team-grid">
-      <div class="team-card team-red">ทีมแดง<br><span id="score-red">0</span></div>
-      <div class="team-card team-yellow">ทีมเหลือง<br><span id="score-yellow">0</span></div>
-      <div class="team-card team-blue">ทีมน้ำเงิน<br><span id="score-blue">0</span></div>
-      <div class="team-card team-green">ทีมเขียว<br><span id="score-green">0</span></div>
-    </div>
-
-    <div class="game-layout">
-      <div class="panel">
-        <div class="ai-commentator" id="ai-text">🤖 ระบบ: ยินดีต้อนรับนักรบต้านยุงทุกคน! เตรียมตัวให้พร้อม!</div>
-        <div id="h-q-number" style="color:var(--yellow); margin:10px 0;">Stage 1 - ข้อ 1</div>
-        <h2 id="h-q-text" style="margin-bottom:20px; font-size:1.8rem;">...</h2>
-        <div id="h-timer" style="font-size:3rem; color:var(--teal); text-align:center; font-weight:900;">20</div>
-        <div id="h-options"></div>
-        <div style="margin-top:20px; text-align:center;">
-           <button class="btn btn-teal" onclick="hostReveal()">เฉลย</button>
-           <button class="btn btn-success" onclick="hostNextQ()">🔥 สู้ต่อ (ข้อต่อไป)</button>
-        </div>
-      </div>
-      <div class="panel">
-        <h3 style="color:var(--yellow); margin-bottom:10px">🏆 กองกำลัง (Leaderboard)</h3>
-        <div id="h-lb-list"></div>
-      </div>
-    </div>
-  </div>
-
-  <div id="host-final" class="host-screen" style="align-items:center; justify-content:center; text-align:center;">
-    <h1 style="font-size:4rem; color:var(--yellow); animation:popUp 1s;">🎉 VICTORY! 🎉</h1>
-    <h3 style="margin-bottom:20px;">หมู่บ้านปลอดภัยจากไข้เลือดออกแล้ว!</h3>
-    <div id="h-final-lb" style="width:100%; max-width:500px;"></div>
-  </div>
-</div>
-
-<div id="player-mode" class="app-mode">
-  <div id="player-join" class="player-screen active fade-in">
-    <h1 style="color:var(--neon); margin-bottom:20px;">🛡️ ร่วมทีมล่า</h1>
-    <input type="text" id="p-room-code" placeholder="รหัสห้อง" style="width:100%;padding:15px;border-radius:12px;border:none;margin-bottom:10px;text-align:center;font-size:1.2rem;text-transform:uppercase">
-    <input type="text" id="p-name" placeholder="ชื่อเล่นนักรบ" style="width:100%;padding:15px;border-radius:12px;border:none;margin-bottom:20px;text-align:center;font-size:1.2rem">
-    <button class="btn btn-primary" style="width:100%" onclick="playerJoin()">⚔️ ลุยเลย!</button>
-  </div>
-
-  <div id="player-waiting" class="player-screen">
-    <div id="p-team-badge" class="team-indicator" style="font-size:1.2rem;">ทีม?</div>
-    <span style="font-size:5rem; animation:popUp 1s infinite alternate">🛡️</span>
-    <h2 style="color:var(--yellow); margin-top:20px;">รอหัวหน้าทีมสั่งโจมตี...</h2>
-  </div>
-
-  <div id="player-question" class="player-screen">
-    <div id="p-combo-ui" class="combo-ui">🔥 COMBO x2 🔥</div>
-    <div style="font-size:2rem; color:var(--teal); font-weight:900;" id="p-timer-text">20</div>
-    <h3 id="p-q-text" style="margin:15px 0 25px; font-size:1.3rem;">...</h3>
-    <div id="p-options" style="width:100%"></div>
-    <div id="p-feedback" style="margin-top:20px; font-size:1.4rem; font-weight:800;"></div>
-  </div>
-</div>
-
-<script>
-/* ==========================================
-   GAME DATA & LOGIC
-========================================== */
-const ALL_QUESTIONS = [
-  {text:'ยุงลายตัวเมียเป็นพาหะนำโรคใด?', options:['มาลาเรีย','อหิวาตกโรค','ไข้เลือดออก','ไข้หวัดใหญ่'], correct:2},
-  {text:'หลักการ "ปิด" ใน 5 ป. 1 ข. หมายถึงปิดอะไร?', options:['ปิดไฟ','ปิดฝาโอ่งน้ำ','ปิดหน้าต่าง','ปิดประตู'], correct:1},
-  {text:'เราควรทำลายแหล่งเพาะพันธุ์ยุงทุกกี่วัน?', options:['10 วัน','3 วัน','7 วัน','5 วัน'], correct:2},
-  {text:'ยาชนิดใดห้ามใช้เด็ดขาดเมื่อสงสัยว่าเป็นไข้เลือดออก?', options:['พาราเซตามอล','ยาอมแก้ไอ','ไอบูโพรเฟน (NSAIDs)','ผงเกลือแร่'], correct:2},
-  {text:'ปลาชนิดใดนิยมนำมาปล่อยเพื่อกินลูกน้ำ?', options:['ปลาคาร์ฟ','ปลากัด/ปลาหางนกยูง','ปลาทอง','ปลาดุก'], correct:1}
-];
-
-const TEAMS = [
-  {id:'red', name:'ทีมแดง', css:'team-red'}, {id:'yellow', name:'ทีมเหลือง', css:'team-yellow'},
-  {id:'blue', name:'ทีมน้ำเงิน', css:'team-blue'}, {id:'green', name:'ทีมเขียว', css:'team-green'}
-];
-
-// Global States
-let h_players = {}, h_qIdx = 0, h_timeLeft = 0, h_timer = null;
-let boss_maxHp = 1000, boss_hp = 1000;
-let p_id = 'p_'+Math.random().toString(36).substr(2,9);
-let p_name = '', p_team = null, p_score = 0, p_combo = 0;
-
-function launchMode(mode) {
-  document.querySelectorAll('.app-mode').forEach(el => el.classList.remove('active'));
-  document.getElementById(mode + '-mode').classList.add('active');
+function flipMemory(card){
+  if(card.classList.contains("matched") || card.textContent!=="?") return;
+  card.textContent = card.dataset.icon;
+  if(!p_mini.firstCard){p_mini.firstCard = card;return}
+  const first = p_mini.firstCard;
+  p_mini.firstCard = null;
+  if(first.dataset.icon===card.dataset.icon){
+    first.classList.add("matched");
+    card.classList.add("matched");
+    addMiniPoints(35,1);
+  }else{
+    setTimeout(()=>{first.textContent="?";card.textContent="?"},600);
+  }
 }
-
-/* ==========================================
-   HOST LOGIC (Mock Supabase for Demo)
-========================================== */
-function hostCreateRoom() {
-  document.getElementById('host-code-display').textContent = "BOSS26";
-  const url = window.location.href.split('?')[0] + "?room=BOSS26";
-  new QRCode(document.getElementById('host-qr'), { text: url, width: 150, height: 150, colorDark: '#1a2744' });
-  launchMode('host');
-  document.querySelectorAll('.host-screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('host-lobby').classList.add('active');
-  
-  // Fake players joining
-  setInterval(() => {
-    if(Object.keys(h_players).length < 8 && document.getElementById('host-lobby').classList.contains('active')) {
-      let t = TEAMS[Math.floor(Math.random()*TEAMS.length)];
-      let pid = 'bot_'+Math.random();
-      h_players[pid] = { name: 'นักรบ_'+Math.floor(Math.random()*100), team: t.id, score: 0 };
-      updateHostLobby();
-    }
-  }, 1500);
-}
-
-function updateHostLobby() {
-  const list = document.getElementById('host-player-list');
-  list.innerHTML = Object.values(h_players).map(p => `<div><span style="color:var(--${p.team})">■</span> ${p.name}</div>`).join('');
-  document.getElementById('host-player-count').textContent = Object.keys(h_players).length;
-}
-
-function hostStartGame() {
-  document.querySelectorAll('.host-screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('host-game').classList.add('active');
-  boss_hp = boss_maxHp;
-  updateBossUI();
-  h_qIdx = 0;
-  hostLoadQ();
-}
-
-function hostLoadQ() {
-  if(h_qIdx >= ALL_QUESTIONS.length) return hostEndGame();
-  
-  const q = ALL_QUESTIONS[h_qIdx];
-  document.getElementById('h-q-number').textContent = `ด่าน ${h_qIdx+1} - โจมตี!`;
-  document.getElementById('h-q-text').textContent = q.text;
-  document.getElementById('h-options').innerHTML = q.options.map((o,i) => `<div class="choice-display" id="h-opt-${i}">${o}</div>`).join('');
-  
-  // AI Commentator logic
-  const comments = [
-    `🤖 AI: ทีมระวัง! บอสกำลังรวบรวมพลัง!`,
-    `🤖 AI: โอกาสทอง! ตอบให้ไวเพื่อทำคริติคอลดาเมจ!`,
-    `🤖 AI: 5 ป. 1 ข. คือเคล็ดวิชาสุดยอดในการปราบมัน!`
+function renderSwipe(arena){
+  const facts = [
+    ["ยุงลายชอบน้ำขังสะอาด",true],
+    ["แอสไพรินเหมาะกับผู้สงสัยไข้เลือดออก",false],
+    ["ควรเก็บบ้าน เก็บน้ำ เก็บขยะ",true],
+    ["ยุงลายกัดเฉพาะกลางคืนเท่านั้น",false],
+    ["ไข้สูงเกิน 2 วันควรพบแพทย์",true]
   ];
-  document.getElementById('ai-text').textContent = comments[h_qIdx % comments.length];
-  
-  h_timeLeft = 20;
-  document.getElementById('h-timer').textContent = h_timeLeft;
-  if(h_timer) clearInterval(h_timer);
-  h_timer = setInterval(() => {
-    h_timeLeft--; 
-    document.getElementById('h-timer').textContent = h_timeLeft;
-    if(h_timeLeft <= 0) hostReveal();
-  }, 1000);
-
-  // Fake bot damage for demo
-  setTimeout(() => triggerDamage(150), 2000);
-  setTimeout(() => triggerDamage(100), 5000);
+  p_mini.facts = facts;
+  drawSwipeCard(arena);
 }
-
-function updateBossUI() {
-  const hpPercent = Math.max(0, (boss_hp / boss_maxHp) * 100);
-  document.getElementById('boss-hp-bar').style.width = hpPercent + '%';
-  document.getElementById('boss-hp-text').textContent = `${boss_hp} / ${boss_maxHp}`;
+function drawSwipeCard(arena){
+  arena.innerHTML = "";
+  const item = p_mini.facts[p_mini.swipeIndex % p_mini.facts.length];
+  const card = document.createElement("div");
+  card.className = "swipe-card";
+  card.textContent = item[0];
+  const row = document.createElement("div");
+  row.className = "row";
+  row.style.justifyContent = "center";
+  row.innerHTML = `<button class="btn coral">ผิด</button><button class="btn mint">ถูก</button>`;
+  row.children[0].onclick = ()=>answerSwipe(false,arena);
+  row.children[1].onclick = ()=>answerSwipe(true,arena);
+  arena.appendChild(card);
+  arena.appendChild(row);
 }
-
-function triggerDamage(amount) {
-  if(boss_hp <= 0) return;
-  boss_hp -= amount;
-  if(boss_hp < 0) boss_hp = 0;
-  
-  // Screen Shake & Hit Effect
-  document.body.classList.add('screen-shake');
-  document.getElementById('boss-sprite').classList.add('boss-hit');
-  
-  // AI Dynamic update
-  if(boss_hp < boss_maxHp * 0.3 && boss_hp > 0) {
-    document.getElementById('ai-text').textContent = `🤖 AI: บอสใกล้ตายแล้ว! อัดมันเข้าไป!!! ⚡⚡`;
+function answerSwipe(answer,arena){
+  const item = p_mini.facts[p_mini.swipeIndex % p_mini.facts.length];
+  addMiniPoints(answer===item[1] ? 30 : -10,answer===item[1] ? 1 : 0);
+  p_mini.swipeIndex++;
+  drawSwipeCard(arena);
+}
+async function submitMini(){
+  if(p_mini.submitted) return;
+  p_mini.submitted = true;
+  clearInterval(p_mini.timer);
+  const gain = Math.max(0,p_mini.points);
+  p_score += gain;
+  p_stats.miniPoints += gain;
+  updatePlayerScoreHud();
+  $("p-mini-feedback").textContent = `ส่งคะแนน Mini Game แล้ว +${gain}`;
+  await savePlayer();
+  if(p_isDemo) setTimeout(pDemoNext,1600);
+  else setTimeout(()=>showPlayerScreen("player-waiting"),1600);
+}
+function pFinishGame(){
+  clearInterval(p_timer);
+  clearInterval(p_mini.timer);
+  updatePlayerScoreHud();
+  const rank = avatarLevel()===4 ? "Legend Hunter" : avatarLevel()===3 ? "นักรบระดับทอง" : avatarLevel()===2 ? "นักรบระดับเงิน" : "นักรบฝึกหัด";
+  $("p-final-copy").textContent = `คุณช่วยกำจัดยุง ${p_stats.mosquitoes} ตัว · ปลดล็อก ${rank}`;
+  showPlayerScreen("player-result");
+}
+function pDemoStartQuestion(stage,qIdx){
+  p_roomState = {phase:"question",stageIdx:stage,qIdx,bossHp:EPISODES[stage].boss.maxHp,bossMaxHp:EPISODES[stage].boss.maxHp,effect:null,roundKey:`demo-${stage}-${qIdx}-${Date.now()}`};
+  pStartQuestion(p_roomState,20);
+}
+function pDemoNext(){
+  if(p_roomState.phase==="mini"){
+    const nextStage = p_roomState.stageIdx + 1;
+    if(nextStage>=EPISODES.length){pFinishGame();return}
+    pDemoStartQuestion(nextStage,0);
+    return;
   }
-
-  updateBossUI();
-  updateTeamScores(amount);
-  
-  setTimeout(() => {
-    document.body.classList.remove('screen-shake');
-    document.getElementById('boss-sprite').classList.remove('boss-hit');
-  }, 500);
-
-  if(boss_hp <= 0) {
-    document.getElementById('ai-text').textContent = `🤖 AI: บอสถูกกำจัดแล้ว!!! ยอดเยี่ยมมาก!! 🎉`;
-    setTimeout(hostEndGame, 2000);
+  const s = p_roomState.stageIdx;
+  const q = p_roomState.qIdx + 1;
+  if(q>=5){
+    if(s<EPISODES.length-1){
+      p_roomState = {phase:"mini",stageIdx:s,qIdx:q,bossHp:100,bossMaxHp:100,mini:{...EPISODES[s].mini,endsAt:Date.now()+16000,key:`demo-mini-${s}-${Date.now()}`}};
+      pStartMini(p_roomState);
+    }else pFinishGame();
+    return;
   }
-}
-
-function updateTeamScores(fakeScore) {
-  // Randomly distribute score to teams for visual effect
-  let colors = ['red','yellow','blue','green'];
-  let c = colors[Math.floor(Math.random()*colors.length)];
-  let el = document.getElementById(`score-${c}`);
-  el.textContent = parseInt(el.textContent) + fakeScore;
-}
-
-function hostReveal() {
-  clearInterval(h_timer);
-  const correct = ALL_QUESTIONS[h_qIdx].correct;
-  document.getElementById(`h-opt-${correct}`).classList.add('correct');
-}
-
-function hostNextQ() {
-  h_qIdx++;
-  hostLoadQ();
-}
-
-function hostEndGame() {
-  clearInterval(h_timer);
-  document.querySelectorAll('.host-screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('host-final').classList.add('active');
-  
-  // Flash effect & Confetti (Using basic JS alert alternative)
-  let flash = document.createElement('div');
-  flash.className = 'flash-effect';
-  document.body.appendChild(flash);
-  setTimeout(()=>flash.remove(), 300);
-
-  let html = `<div style="background:rgba(255,255,255,0.1); padding:20px; border-radius:20px; margin-top:20px;">
-    <h2 style="color:var(--orange)">MVP: สมองเพชร 🧠</h2>
-    <p>นักรบที่ทำดาเมจสูงสุดในทีม!</p>
-    <button class="btn btn-primary" style="margin-top:20px" onclick="location.reload()">เล่นด่านต่อไป</button>
-  </div>`;
-  document.getElementById('h-final-lb').innerHTML = html;
-}
-
-
-/* ==========================================
-   PLAYER LOGIC
-========================================== */
-function playerJoin() {
-  p_name = document.getElementById('p-name').value;
-  if(!p_name) return alert('ใส่ชื่อก่อนลุย!');
-  
-  // Random Team Assignment
-  const t = TEAMS[Math.floor(Math.random()*TEAMS.length)];
-  p_team = t;
-  
-  const badge = document.getElementById('p-team-badge');
-  badge.textContent = `สังกัด: ${t.name}`;
-  badge.className = `team-indicator ${t.css}`;
-  
-  launchMode('player');
-  document.querySelectorAll('.player-screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('player-waiting').classList.add('active');
-
-  // Auto trigger start for demo
-  setTimeout(() => pStartQ(0), 2000);
-}
-
-function pStartQ(idx) {
-  if(idx >= ALL_QUESTIONS.length) return; // End game handled by host in real app
-  
-  document.querySelectorAll('.player-screen').forEach(s => s.classList.remove('active'));
-  document.getElementById('player-question').classList.add('active');
-  document.body.classList.remove('fire-mode-active');
-  document.getElementById('p-feedback').textContent = '';
-  
-  // Fire Mode UI logic
-  const comboUi = document.getElementById('p-combo-ui');
-  if(p_combo >= 3) {
-    comboUi.style.display = 'block';
-    comboUi.textContent = `🔥 FIRE MODE (x2) 🔥`;
-    document.body.classList.add('fire-mode-active');
-  } else if(p_combo > 1) {
-    comboUi.style.display = 'block';
-    comboUi.textContent = `⚡ COMBO x${p_combo}`;
-  } else {
-    comboUi.style.display = 'none';
-  }
-
-  const q = ALL_QUESTIONS[idx];
-  document.getElementById('p-q-text').textContent = q.text;
-  document.getElementById('p-options').innerHTML = q.options.map((o,i) => `<button class="opt-btn" onclick="pAnswer(${i}, ${q.correct}, ${idx})">${o}</button>`).join('');
-  
-  let p_time = 20;
-  document.getElementById('p-timer-text').textContent = p_time;
-  let pt = setInterval(()=> {
-    p_time--;
-    document.getElementById('p-timer-text').textContent = p_time;
-    if(p_time <= 0 || document.getElementById('player-question').classList.contains('active') === false) clearInterval(pt);
-  }, 1000);
-}
-
-function pAnswer(selected, correct, qIdx) {
-  const btns = document.getElementById('p-options').children;
-  for(let i=0; i<btns.length; i++) {
-    btns[i].disabled = true;
-    if(i === correct) btns[i].classList.add('correct');
-    else if(i === selected) btns[i].classList.add('wrong');
-  }
-
-  const fb = document.getElementById('p-feedback');
-  if(selected === correct) {
-    p_combo++;
-    let dmg = 50 * (p_combo >= 3 ? 2 : 1); // x2 in Fire Mode
-    fb.innerHTML = `✅ โจมตีสำเร็จ! <br><span style="color:var(--orange)">สร้างความเสียหาย ${dmg} DMG</span>`;
-    
-    // Simulate sending damage to host
-    if(document.getElementById('host-mode').style.display !== 'none') {
-        triggerDamage(dmg);
-    }
-  } else {
-    p_combo = 0; // Break combo
-    fb.textContent = `❌ พลาดเป้า! ระวังยุงกัด!`;
-    fb.style.color = 'var(--red)';
-    
-    // Flash red
-    let flash = document.createElement('div');
-    flash.style = 'position:fixed;inset:0;background:rgba(255,0,0,0.5);z-index:99;animation:flash 0.3s;pointer-events:none;';
-    document.body.appendChild(flash);
-    setTimeout(()=>flash.remove(),300);
-  }
-
-  setTimeout(() => {
-    document.querySelectorAll('.player-screen').forEach(s => s.classList.remove('active'));
-    document.getElementById('player-waiting').classList.add('active');
-    
-    // Auto next for demo
-    setTimeout(() => pStartQ(qIdx+1), 2000);
-  }, 2500);
-}
-
-// Ensure URL params mode
-window.onload = () => {
-  const params = new URLSearchParams(window.location.search);
-  if(params.get('room')) {
-    document.getElementById('p-room-code').value = params.get('room');
-    launchMode('player');
-  }
+  pDemoStartQuestion(s,q);
 }
 </script>
 </body>
