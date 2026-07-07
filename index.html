@@ -235,7 +235,14 @@ body::after{
         <h1 class="title-xl">นักรบต้านยุง<br>ปกป้องหมู่บ้าน</h1>
         <p class="subtitle">เกม: Host/Player,Boss HP, Team Battle, Combo, Mini Game และ Victory Awards </p>
       </div>
-      <div class="grid grid-2">
+      <div class="grid grid-3">
+        <article class="card mode-card" onclick="startSinglePlayer()">
+          <div class="big-icon">🎮</div>
+          <div>
+            <h3>Single Player</h3>
+            <p>เล่นคนเดียวแบบออฟไลน์ ลุยด่าน ตอบคำถาม และสู้บอสทันที</p>
+          </div>
+        </article>
         <article class="card mode-card" onclick="launchMode('host')">
           <div class="big-icon">🧑‍🏫</div>
           <div>
@@ -778,6 +785,24 @@ function stageNode(ep,i,active){
   </div>`;
 }
 window.addEventListener("load",initStaticUi);
+// --- สคริปต์สำหรับโหมดเล่นเดี่ยว ---
+function startSinglePlayer() {
+  p_isDemo = true; // เปิดโหมด Demo ไม่ต่อ Database
+  p_name = "Solo Hunter"; // กำหนดชื่อเริ่มต้น
+  p_avatar = AVATARS[Math.floor(Math.random() * AVATARS.length)]; // สุ่มอวาตาร์
+  p_team = TEAMS[Math.floor(Math.random() * TEAMS.length)].id; // สุ่มทีม
+  
+  // อัปเดต UI ชิปต่างๆ
+  $("p-badge").textContent = `${p_avatar} ${p_name} · โหมดเล่นเดี่ยว`;
+  updatePlayerScoreHud();
+  
+  // สลับหน้าจอไปที่ Player Mode แล้วเริ่มเกมทันที
+  launchMode('player');
+  showPlayerScreen("player-waiting");
+  
+  // เริ่มคำถามแรกหลังจากดีเลย์สั้นๆ ให้ UI โหลดเสร็จ
+  setTimeout(() => pDemoStartQuestion(0, 0), 600);
+}
 
 async function hostCreateRoom(isDemo){
   h_isDemo = isDemo;
@@ -1310,10 +1335,26 @@ async function pAnswer(idx){
   if(p_isDemo) setTimeout(pDemoNext,1700);
   else setTimeout(()=>showPlayerScreen("player-waiting"),2300);
 }
+// --- Clean Code: Debounce การเซฟข้อมูลเพื่อลดภาระ Database ---
+let p_saveTimeout = null; // ตัวแปรเก็บเวลา
 async function savePlayer(){
-  if(p_isDemo || !sbClient) return;
-  const {error} = await sbClient.from("players").update({score:p_score,avatar:encodeMeta()}).eq("id",p_id);
-  if(error) console.warn("save player failed",error);
+  if(p_isDemo || !sbClient) return; // โหมดเล่นเดี่ยวไม่ต้องเซฟลง DB
+  
+  // ถ้ายิงคำสั่งมาซ้ำๆ ให้ยกเลิกอันเก่า
+  if(p_saveTimeout) clearTimeout(p_saveTimeout);
+  
+  // หน่วงเวลาเซฟ 1000ms (1 วินาที) รวบยอด Request
+  p_saveTimeout = setTimeout(async () => {
+    try {
+      const {error} = await sbClient.from("players")
+        .update({score: p_score, avatar: encodeMeta()})
+        .eq("id", p_id);
+      if(error) throw error;
+    } catch (err) {
+      console.warn("Save player delayed/failed, retrying next sync...", err);
+      // ไม่ต้องโชว์ Error ให้ผู้เล่นตกใจ ระบบจะเซฟใหม่ในรอบหน้าอัตโนมัติ
+    }
+  }, 1000); 
 }
 function updateComboChip(){
   const chip = $("p-combo-chip");
@@ -1531,23 +1572,30 @@ function pDemoStartQuestion(stage,qIdx){
   p_roomState = {phase:"question",stageIdx:stage,qIdx,bossHp:EPISODES[stage].boss.maxHp,bossMaxHp:EPISODES[stage].boss.maxHp,effect:null,roundKey:`demo-${stage}-${qIdx}-${Date.now()}`};
   pStartQuestion(p_roomState,20);
 }
+// --- ปรับปรุง Flow โหมดเล่นเดี่ยว (ข้ามด่านราบรื่น) ---
 function pDemoNext(){
   if(p_roomState.phase==="mini"){
     const nextStage = p_roomState.stageIdx + 1;
-    if(nextStage>=EPISODES.length){pFinishGame();return}
-    pDemoStartQuestion(nextStage,0);
+    if(nextStage >= EPISODES.length){ pFinishGame(); return; }
+    pDemoStartQuestion(nextStage, 0);
     return;
   }
   const s = p_roomState.stageIdx;
   const q = p_roomState.qIdx + 1;
-  if(q>=5){
-    if(s<EPISODES.length-1){
-      p_roomState = {phase:"mini",stageIdx:s,qIdx:q,bossHp:100,bossMaxHp:100,mini:{...EPISODES[s].mini,endsAt:Date.now()+16000,key:`demo-mini-${s}-${Date.now()}`}};
+  if(q >= 5){
+    if(s < EPISODES.length - 1){
+      const ep = EPISODES[s];
+      p_roomState = {
+        phase: "mini", stageIdx: s, qIdx: q, bossHp: ep.boss.maxHp, bossMaxHp: ep.boss.maxHp,
+        mini: { ...ep.mini, endsAt: Date.now() + 16000, key: `demo-mini-${s}-${Date.now()}` }
+      };
       pStartMini(p_roomState);
-    }else pFinishGame();
+    } else {
+      pFinishGame();
+    }
     return;
   }
-  pDemoStartQuestion(s,q);
+  pDemoStartQuestion(s, q);
 }
 </script>
 </body>
