@@ -235,7 +235,8 @@ body::after{
         <h1 class="title-xl">นักรบต้านยุง<br>ปกป้องหมู่บ้าน</h1>
         <p class="subtitle">เกม: Host/Player,Boss HP, Team Battle, Combo, Mini Game และ Victory Awards </p>
       </div>
-      <div class="grid grid-3">
+      <!-- ปรับเป็น Grid 2x2 และเพิ่มปุ่มแข่งเดี่ยว (Free-For-All) -->
+      <div class="grid grid-2">
         <article class="card mode-card" onclick="startSinglePlayer()">
           <div class="big-icon">🎮</div>
           <div>
@@ -243,18 +244,25 @@ body::after{
             <p>เล่นคนเดียวแบบออฟไลน์ ลุยด่าน ตอบคำถาม และสู้บอสทันที</p>
           </div>
         </article>
+        <article class="card mode-card" onclick="startMultiPlayer(false)">
+          <div class="big-icon">🤺</div>
+          <div>
+            <h3>Multiplayer (แข่งเดี่ยว)</h3>
+            <p>แข่งกับเพื่อนในห้องแบบ Free-For-All ไม่มีระบบทีม</p>
+          </div>
+        </article>
+        <article class="card mode-card" onclick="startMultiPlayer(true)">
+          <div class="big-icon">📱</div>
+          <div>
+            <h3>Multiplayer (แข่งเป็นทีม)</h3>
+            <p>เลือก Avatar, เข้าทีม, ช่วยกันโจมตีบอส และทำคะแนนรวม</p>
+          </div>
+        </article>
         <article class="card mode-card" onclick="launchMode('host')">
           <div class="big-icon">🧑‍🏫</div>
           <div>
             <h3>Host Control</h3>
-            <p>สร้างห้อง, เปิด QR, คุมด่าน, ดู Boss HP และ Leaderboard แบบเดี่ยว + ทีม</p>
-          </div>
-        </article>
-        <article class="card mode-card" onclick="launchMode('player')">
-          <div class="big-icon">📱</div>
-          <div>
-            <h3>Player Mission</h3>
-            <p>เลือก Avatar, เข้าทีม, ตอบคำถามเป็นการโจมตี, เก็บ Combo และเล่น Mini Game</p>
+            <p>สร้างห้อง, ควบคุมด่าน, ดู Boss HP และ Leaderboard</p>
           </div>
         </article>
       </div>
@@ -280,6 +288,14 @@ body::after{
           <div class="input-group">
             <label for="host-room-name">ชื่อห้องเรียน</label>
             <input id="host-room-name" value="ป.4 นักรบต้านยุง">
+          </div>
+          <!-- เพิ่ม Dropdown รูปแบบการแข่งขัน -->
+          <div class="input-group">
+            <label for="host-mode-select">รูปแบบการแข่งขัน</label>
+            <select id="host-mode-select">
+              <option value="ffa">แข่งเดี่ยว (Free-For-All ไม่มีทีม)</option>
+              <option value="team" selected>แข่งเป็นทีม (Team Battle)</option>
+            </select>
           </div>
           <div class="input-group">
             <label for="host-time">เวลาต่อคำถาม</label>
@@ -786,21 +802,56 @@ function stageNode(ep,i,active){
 }
 window.addEventListener("load",initStaticUi);
 // --- สคริปต์สำหรับโหมดเล่นเดี่ยว ---
+// --- สคริปต์สำหรับโหมดเล่นเดี่ยว ---
+// --- สคริปต์สำหรับจัดการหน้าเข้าเกม (Single & Multi) ---
 function startSinglePlayer() {
-  p_isDemo = true; // เปิดโหมด Demo ไม่ต่อ Database
-  p_name = "Solo Hunter"; // กำหนดชื่อเริ่มต้น
-  p_avatar = AVATARS[Math.floor(Math.random() * AVATARS.length)]; // สุ่มอวาตาร์
-  p_team = TEAMS[Math.floor(Math.random() * TEAMS.length)].id; // สุ่มทีม
+  // 1. ซ่อนช่อง "รหัสห้อง" และ "เลือกทีม"
+  $("p-room-code").parentElement.style.display = "none";
+  $("p-team-list").parentElement.style.display = "none";
   
-  // อัปเดต UI ชิปต่างๆ
-  $("p-badge").textContent = `${p_avatar} ${p_name} · โหมดเล่นเดี่ยว`;
+  // 2. เปลี่ยนปุ่มให้ทำงานเป็นโหมดเดี่ยว
+  const btn = document.querySelector("#player-join .btn.mint");
+  btn.textContent = "▶ เริ่มลุยเดี่ยว";
+  btn.onclick = joinSoloGame; 
+
+  launchMode('player');
+  showPlayerScreen("player-join");
+}
+
+function startMultiPlayer(isTeam = true) {
+  // 1. แสดงช่อง "รหัสห้อง" เสมอ
+  $("p-room-code").parentElement.style.display = "grid";
+  
+  // 2. ซ่อน/แสดง การเลือกทีม ตามโหมดที่กดเข้ามา
+  $("p-team-list").parentElement.style.display = isTeam ? "grid" : "none";
+  
+  // 3. กำหนดค่า Team ตั้งต้น (ถ้าเล่นเดี่ยว ให้ค่าเป็น none)
+  p_isDemo = false;
+  p_team = isTeam ? TEAMS[0].id : "none"; 
+  
+  // 4. ตั้งค่าปุ่มกลับเป็นโหมดเชื่อมต่อเซิร์ฟเวอร์
+  const btn = document.querySelector("#player-join .btn.mint");
+  btn.textContent = "▶ เข้าร่วมภารกิจ";
+  btn.onclick = playerJoin; 
+
+  launchMode('player');
+  showPlayerScreen("player-join");
+}
+
+function joinSoloGame() {
+  p_name = $("p-name").value.trim() || "นักรบไร้นาม"; 
+  p_isDemo = true;
+  p_team = "none"; // ใช้คำว่า none เพื่อให้เข้ากับระบบแข่งเดี่ยว
+  
+  // Clean Code: รีเซ็ตคะแนนและสถานะเดิม
+  p_score = 0; p_combo = 0; p_stats.mosquitoes = 0; p_stats.miniPoints = 0;
+  
+  $("p-badge").textContent = `${p_avatar} ${p_name} · ลุยเดี่ยว`;
   updatePlayerScoreHud();
   
-  // สลับหน้าจอไปที่ Player Mode แล้วเริ่มเกมทันที
-  launchMode('player');
   showPlayerScreen("player-waiting");
   
-  // เริ่มคำถามแรกหลังจากดีเลย์สั้นๆ ให้ UI โหลดเสร็จ
+  // เริ่มเกมทันที
   setTimeout(() => pDemoStartQuestion(0, 0), 600);
 }
 
@@ -813,18 +864,19 @@ async function hostCreateRoom(isDemo){
   h_qIdx = 0;
   h_players = {};
   h_state = makeState("lobby");
+  // บันทึกรูปแบบเกมที่ Host เลือก
+  h_state.gameMode = $("host-mode-select") ? $("host-mode-select").value : "team";
   h_lastTotalScore = 0;
   $("host-room-mode").textContent = h_isDemo ? "Demo" : "Supabase";
   $("lobby-title").textContent = $("host-room-name").value || "Dengue Hunter";
   $("host-code-display").textContent = h_roomCode;
-  if(!isDemo && !sbClient){
-    showToast("โหลด Supabase CDN ไม่สำเร็จ ใช้ Demo Mode แทนได้");
-    return;
-  }
+  
+  if(!isDemo && !sbClient){ showToast("โหลด Supabase CDN ไม่สำเร็จ ใช้ Demo Mode แทนได้"); return; }
+  
   if(!isDemo){
     const payload = {room_code:h_roomCode,name:$("host-room-name").value || "Dengue Hunter",status:"lobby",timePerQ:h_time,stageIdx:0,qIdx:0,q_list:encodeRoomState()};
     const {error} = await sbClient.from("rooms").insert([payload]);
-    if(error){console.error(error);showToast("สร้างห้องไม่สำเร็จ ตรวจสอบ Supabase table rooms");return}
+    if(error){console.error(error);showToast("สร้างห้องไม่สำเร็จ");return}
     h_roomChannel = sbClient.channel("host-players-"+h_roomCode)
       .on("postgres_changes",{event:"*",schema:"public",table:"players",filter:`room_code=eq.${h_roomCode}`},payload=>{
         if(payload.eventType==="DELETE") delete h_players[payload.old.id];
@@ -832,12 +884,10 @@ async function hostCreateRoom(isDemo){
         hostPlayersChanged();
       }).subscribe();
   }else{
+    // โหมดจำลองของ Host
     setTimeout(()=>{
       h_players = {
-        d1:{id:"d1",name:"น้องเมย์",score:0,avatar:JSON.stringify({emoji:"👧",team:"red",answers:0,correct:0,maxCombo:0,fastest:999,mosquitoes:0})},
-        d2:{id:"d2",name:"ต้นกล้า",score:0,avatar:JSON.stringify({emoji:"🦸",team:"blue",answers:0,correct:0,maxCombo:0,fastest:999,mosquitoes:0})},
-        d3:{id:"d3",name:"ใบหม่อน",score:0,avatar:JSON.stringify({emoji:"🧑‍🔬",team:"green",answers:0,correct:0,maxCombo:0,fastest:999,mosquitoes:0})},
-        d4:{id:"d4",name:"ภูผา",score:0,avatar:JSON.stringify({emoji:"🥷",team:"yellow",answers:0,correct:0,maxCombo:0,fastest:999,mosquitoes:0})}
+        d1:{id:"d1",name:"น้องเมย์",score:0,avatar:JSON.stringify({emoji:"👧",team:"none",answers:0,correct:0,maxCombo:0,fastest:999,mosquitoes:0})}
       };
       hostPlayersChanged();
     },400);
@@ -857,49 +907,74 @@ function renderQr(){
     qr.innerHTML = `<a class="qr-link" href="${url}">${url}</a>`;
   }
 }
+// --- Clean Code: รวบยอดการวาด UI ป้องกันหน้าจอ Host ค้าง (Lag) ---
+let hostRenderTimeout = null;
 function hostPlayersChanged(){
-  const total = totalScore();
-  if(h_state && ["question","reveal","mini"].includes(h_state.phase)){
-    const delta = Math.max(0,total - h_lastTotalScore);
-    if(delta>0){
-      h_state.bossHp = clamp(h_state.bossHp - delta,0,h_state.bossMaxHp);
-      h_state.commentary = makeCommentary(delta);
-      h_state.updatedAt = Date.now();
-      $("boss-card")?.classList.add("hit");
-      setTimeout(()=>$("boss-card")?.classList.remove("hit"),420);
-      queuePublish();
+  if(hostRenderTimeout) cancelAnimationFrame(hostRenderTimeout); // ยกเลิกคิวเก่า
+  hostRenderTimeout = requestAnimationFrame(() => { // รวบยอดทำทีเดียว
+    const total = totalScore();
+    if(h_state && ["question","reveal","mini"].includes(h_state.phase)){
+      const delta = Math.max(0,total - h_lastTotalScore);
+      if(delta>0){
+        h_state.bossHp = clamp(h_state.bossHp - delta,0,h_state.bossMaxHp);
+        h_state.commentary = makeCommentary(delta);
+        h_state.updatedAt = Date.now();
+        $("boss-card")?.classList.add("hit");
+        setTimeout(()=>$("boss-card")?.classList.remove("hit"),420);
+        queuePublish();
+      }
+      h_lastTotalScore = total;
+    }else{
+      h_lastTotalScore = total;
     }
-    h_lastTotalScore = total;
-  }else{
-    h_lastTotalScore = total;
-  }
-  hostRenderPlayers();
-  hostRenderLeaderboards();
-  hostRenderBoss();
+    hostRenderPlayers();
+    hostRenderLeaderboards();
+    hostRenderBoss();
+  });
 }
 function totalScore(){return Object.values(h_players).reduce((s,p)=>s+(Number(p.score)||0),0)}
 function hostRenderPlayers(){
   const players = Object.values(h_players);
+  const isFFA = h_state && h_state.gameMode === "ffa";
+  
   $("host-player-count").textContent = players.length;
   $("host-player-list").innerHTML = players.length ? players.map(p=>{
     const m = parseMeta(p), t = teamById(m.team);
-    return `<div class="lb-row"><span class="rank-dot" style="background:${t.color};color:#07111f">${m.emoji}</span><span class="name">${p.name}<br><small style="color:var(--muted)">ทีม${t.name}</small></span><span class="score">${p.score||0}</span></div>`;
+    // ถ้าแข่งเดี่ยวให้เขียนว่า "แข่งเดี่ยว" แทนการบอกชื่อทีม
+    const teamText = isFFA ? "แข่งเดี่ยว" : `ทีม${t.name}`;
+    const dotColor = isFFA ? 'var(--cyan)' : t.color;
+    return `<div class="lb-row"><span class="rank-dot" style="background:${dotColor};color:#07111f">${m.emoji}</span><span class="name">${p.name}<br><small style="color:var(--muted)">${teamText}</small></span><span class="score">${p.score||0}</span></div>`;
   }).join("") : `<p style="color:var(--muted)">ยังไม่มีผู้เล่นเข้าห้อง</p>`;
 }
 function hostRenderLeaderboards(){
   const sorted = Object.values(h_players).sort((a,b)=>(b.score||0)-(a.score||0));
+  const isFFA = h_state && h_state.gameMode === "ffa";
+  
   const rowHtml = sorted.length ? sorted.map((p,i)=>{
     const m = parseMeta(p), t = teamById(m.team);
-    return `<div class="lb-row"><span class="rank-dot">${i+1}</span><span class="name">${m.emoji} ${p.name}<br><small style="color:${t.color}">ทีม${t.name} · Combo ${m.maxCombo||0}</small></span><span class="score">⭐ ${p.score||0}</span></div>`;
+    const subText = isFFA ? `Combo ${m.maxCombo||0}` : `ทีม${t.name} · Combo ${m.maxCombo||0}`;
+    const subColor = isFFA ? 'var(--cyan)' : t.color;
+    return `<div class="lb-row"><span class="rank-dot">${i+1}</span><span class="name">${m.emoji} ${p.name}<br><small style="color:${subColor}">${subText}</small></span><span class="score">⭐ ${p.score||0}</span></div>`;
   }).join("") : `<p style="color:var(--muted)">รอคะแนนจากผู้เล่น</p>`;
+  
   ["h-lb-list","mini-host-lb"].forEach(id=>{if($(id)) $(id).innerHTML = rowHtml});
-  const teamScores = teamTotals();
-  const max = Math.max(1,...teamScores.map(t=>t.score));
-  $("h-team-list").innerHTML = teamScores.map(t=>`<div class="team-row">
-    <span class="team-swatch" style="background:${t.color}"></span>
-    <div><b>${t.icon} ทีม${t.name}</b><div class="team-meter"><span style="background:${t.color};width:${Math.max(6,(t.score/max)*100)}%"></span></div></div>
-    <b>${t.score}</b>
-  </div>`).join("");
+  
+  // ซ่อน/แสดง บอร์ดสรุปคะแนนทีม (Team Battle)
+  const teamCard = $("h-team-list")?.parentElement;
+  if (teamCard) {
+    if (isFFA) {
+      teamCard.style.display = "none";
+    } else {
+      teamCard.style.display = "block";
+      const teamScores = teamTotals();
+      const max = Math.max(1,...teamScores.map(t=>t.score));
+      $("h-team-list").innerHTML = teamScores.map(t=>`<div class="team-row">
+        <span class="team-swatch" style="background:${t.color}"></span>
+        <div><b>${t.icon} ทีม${t.name}</b><div class="team-meter"><span style="background:${t.color};width:${Math.max(6,(t.score/max)*100)}%"></span></div></div>
+        <b>${t.score}</b>
+      </div>`).join("");
+    }
+  }
 }
 function teamTotals(){
   const totals = TEAMS.map(t=>({...t,score:0}));
@@ -1116,7 +1191,11 @@ function makeAwards(players){
   });
   const combo = by(p=>parseMeta(p).maxCombo||0);
   const slayer = by(p=>parseMeta(p).mosquitoes||0);
-  const helper = teamTotals()[0];
+  
+  // Clean Code: ป้องกันการแจกรางวัลทีมแบบสุ่มในโหมดแข่งเดี่ยว
+  const isFFA = h_state && h_state.gameMode === "ffa";
+  const helper = isFFA ? null : teamTotals()[0];
+  
   return [
     {icon:"🏆",title:"MVP",name:top ? top.name : "-"},
     {icon:"⚡",title:"Fastest",name:fastest ? fastest.name : "-"},
@@ -1137,10 +1216,12 @@ function makeCommentary(delta){
   ];
   return options[Math.floor(Math.random()*options.length)];
 }
+// --- Clean Code: ลดภาระการส่งข้อมูล (Write) ไปยัง Database ---
 function queuePublish(){
   if(h_isDemo || h_publishQueued) return;
   h_publishQueued = true;
-  setTimeout(()=>{h_publishQueued=false;hostPublish(h_state.phase)},250);
+  // ปรับเวลาหน่วงเป็น 1000ms (1 วินาที) เพื่อรวบยอด Request ไม่ให้ยิงถี่เกินไป
+  setTimeout(()=>{h_publishQueued=false;hostPublish(h_state.phase)},1000);
 }
 async function hostPublish(status){
   if(h_isDemo || !sbClient || !h_roomCode || !h_state) return;
@@ -1193,8 +1274,12 @@ async function playerJoin(){
   p_roomCode = $("p-room-code").value.trim().toUpperCase();
   p_name = $("p-name").value.trim();
   if(!p_roomCode || !p_name){showToast("กรอกรหัสห้องและชื่อก่อนนะ");return}
+  
+  // Clean Code: เช็กโหมดเพื่อซ่อนชื่อทีมในห้องรอ
   const team = teamById(p_team);
-  $("p-badge").textContent = `${p_avatar} ${p_name} · ทีม${team.name}`;
+  $("p-badge").textContent = (p_team === "none" || p_isDemo) 
+    ? `${p_avatar} ${p_name} · แข่งเดี่ยว` 
+    : `${p_avatar} ${p_name} · ทีม${team.name}`;
   updatePlayerScoreHud();
   if(p_isDemo){
     showPlayerScreen("player-waiting");
@@ -1252,8 +1337,11 @@ function pStartQuestion(state,time){
   const q = QUESTIONS[p_indices[state.stageIdx*5 + state.qIdx] ?? (state.stageIdx*5 + state.qIdx)];
   p_questionDuration = state.effect?.id==="swarm" ? Math.min(5,time) : time;
   p_timeLeft = p_questionDuration;
-  $("p-stage-chip").textContent = `${ep.icon} ด่าน ${state.stageIdx+1}`;
-  $("p-team-chip").textContent = `${teamById(p_team).icon} ทีม${teamById(p_team).name}`;
+$("p-stage-chip").textContent = `${ep.icon} ด่าน ${state.stageIdx+1}`;
+  
+  // อัปเดตเงื่อนไข: ถ้าเป็นโหมดเล่นเดี่ยว (Demo) หรือแข่งเดี่ยว (Team="none")
+  $("p-team-chip").textContent = (p_isDemo || p_team === "none") ? `👤 ลุยเดี่ยว` : `${teamById(p_team).icon} ทีม${teamById(p_team).name}`;
+  
   $("p-q-text").textContent = q.text;
   $("p-feedback").textContent = "";
   $("p-options").innerHTML = q.options.map((o,i)=>`<button class="opt-btn" onclick="pAnswer(${i})"><span class="letter">${"ABCD"[i]}</span>${o}</button>`).join("");
