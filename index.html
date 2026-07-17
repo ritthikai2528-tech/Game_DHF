@@ -584,7 +584,7 @@ body::after{
 // ==========================================
 // กำหนด URL ของ Google Apps Script Web App ที่ได้จากการ Deploy
 // ==========================================
-const GAS_URL = "YOUR_WEB_APP_URL_HERE"; 
+const GAS_URL = "https://script.google.com/macros/s/AKfycbxKUQ9rpTlujFONW3MRXiQ4lvhea92EnRJxPqG1TgRGPgR7__oYTSly_vq5tqFBMIVN/exec"; 
 
 const QUESTIONS = [
   {text:"ยุงลายตัวเมียเป็นพาหะนำโรคใด?",options:["มาลาเรีย","อหิวาตกโรค","ไข้เลือดออก","ไข้หวัดใหญ่"],correct:2},
@@ -852,7 +852,7 @@ async function hostCreateRoom(isDemo){
   $("lobby-title").textContent = $("host-room-name").value || "Dengue Hunter";
   $("host-code-display").textContent = h_roomCode;
   
-  if(!isDemo && GAS_URL === "https://script.google.com/macros/s/AKfycbxKUQ9rpTlujFONW3MRXiQ4lvhea92EnRJxPqG1TgRGPgR7__oYTSly_vq5tqFBMIVN/exec"){ 
+  if(!isDemo && GAS_URL === "YOUR_WEB_APP_URL_HERE"){ 
     showToast("กรุณาใส่ Web App URL ในโค้ดก่อนใช้งาน"); 
     return; 
   }
