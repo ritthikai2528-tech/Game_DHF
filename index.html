@@ -7,7 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <style>
@@ -233,9 +232,8 @@ body::after{
       <div>
         <div class="badge">Dengue Hunter Ultimate 2026</div>
         <h1 class="title-xl">นักรบต้านยุง<br>ปกป้องหมู่บ้าน</h1>
-        <p class="subtitle">เกม: Host/Player,Boss HP, Team Battle, Combo, Mini Game และ Victory Awards </p>
+        <p class="subtitle">เกม: Host/Player, Boss HP, Team Battle, Combo, Mini Game และ Victory Awards</p>
       </div>
-      <!-- ปรับเป็น Grid 2x2 และเพิ่มปุ่มแข่งเดี่ยว (Free-For-All) -->
       <div class="grid grid-2">
         <article class="card mode-card" onclick="startSinglePlayer()">
           <div class="big-icon">🎮</div>
@@ -289,7 +287,6 @@ body::after{
             <label for="host-room-name">ชื่อห้องเรียน</label>
             <input id="host-room-name" value="ป.4 นักรบต้านยุง">
           </div>
-          <!-- เพิ่ม Dropdown รูปแบบการแข่งขัน -->
           <div class="input-group">
             <label for="host-mode-select">รูปแบบการแข่งขัน</label>
             <select id="host-mode-select">
@@ -307,8 +304,8 @@ body::after{
             </select>
           </div>
           <div class="grid" style="gap:10px">
-            <button class="btn mint" onclick="hostCreateRoom(false)">⚡ สร้างห้องใหม่(Supabase)</button>
-            <button class="btn cyan" onclick="hostCreateRoom(true)">🧪 Demo Mode(ไม่ใช้ฐานข้อมูล)</button>
+            <button class="btn mint" onclick="hostCreateRoom(false)">⚡ สร้างห้องใหม่(Google Sheets)</button>
+            <button class="btn cyan" onclick="hostCreateRoom(true)">🧪 Demo Mode(จำลอง)</button>
           </div>
         </div>
         <div class="card soft">
@@ -341,7 +338,7 @@ body::after{
           <h1 id="host-code-display" style="letter-spacing:5px;color:var(--yellow);margin:14px 0 4px">----</h1>
           <div class="row" style="justify-content:center">
             <span class="badge">ผู้เล่น <b id="host-player-count">0</b></span>
-            <span class="badge">โหมด <b id="host-room-mode">Supabase</b></span>
+            <span class="badge">โหมด <b id="host-room-mode">Google Sheets</b></span>
           </div>
         </div>
         <div class="card">
@@ -584,9 +581,10 @@ body::after{
 </main>
 
 <script>
-const SUPABASE_URL = "https://ospqpdgmdufohmzntbpp.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9zcHFwZGdtZHVmb2htem50YnBwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI2MDU0NzksImV4cCI6MjA5ODE4MTQ3OX0.XVYAgmlTB896CxqBMDXqXT2gUSgUahqtLjj8gx4Ogys";
-const sbClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+// ==========================================
+// กำหนด URL ของ Google Apps Script Web App ที่ได้จากการ Deploy
+// ==========================================
+const GAS_URL = "YOUR_WEB_APP_URL_HERE"; 
 
 const QUESTIONS = [
   {text:"ยุงลายตัวเมียเป็นพาหะนำโรคใด?",options:["มาลาเรีย","อหิวาตกโรค","ไข้เลือดออก","ไข้หวัดใหญ่"],correct:2},
@@ -636,7 +634,6 @@ const POWERS = [
 let narratorOn = true;
 let h_isDemo = false;
 let h_roomCode = "";
-let h_roomChannel = null;
 let h_players = {};
 let h_stageIdx = 0;
 let h_qIdx = 0;
@@ -650,11 +647,10 @@ let h_state = null;
 let h_indices = QUESTIONS.map((_,i)=>i);
 let h_lastTotalScore = 0;
 let h_publishQueued = false;
+let h_pollTimer = null; // สำหรับ Host Polling
 
 let p_isDemo = false;
 let p_roomCode = "";
-let p_roomChannel = null;
-let p_playersChannel = null;
 let p_id = "p_" + Date.now() + "_" + Math.random().toString(36).slice(2,7);
 let p_name = "";
 let p_avatar = AVATARS[0];
@@ -676,6 +672,7 @@ let p_indices = QUESTIONS.map((_,i)=>i);
 let p_roomState = null;
 let p_stats = {answers:0,correct:0,maxCombo:0,fastest:999,mosquitoes:0,miniPoints:0};
 let p_mini = {points:0,submitted:false,timer:null,timeLeft:30,type:"swat",matched:0,firstCard:null,swipeIndex:0};
+let p_pollTimer = null; // สำหรับ Player Polling
 
 function $(id){return document.getElementById(id)}
 function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
@@ -801,39 +798,29 @@ function stageNode(ep,i,active){
   </div>`;
 }
 window.addEventListener("load",initStaticUi);
-// --- สคริปต์สำหรับโหมดเล่นเดี่ยว ---
-// --- สคริปต์สำหรับโหมดเล่นเดี่ยว ---
-// --- สคริปต์สำหรับจัดการหน้าเข้าเกม (Single & Multi) ---
+
+// ==========================================
+// ส่วนจัดการการเล่น (Single / Multi / Host)
+// ==========================================
+
 function startSinglePlayer() {
-  // 1. ซ่อนช่อง "รหัสห้อง" และ "เลือกทีม"
   $("p-room-code").parentElement.style.display = "none";
   $("p-team-list").parentElement.style.display = "none";
-  
-  // 2. เปลี่ยนปุ่มให้ทำงานเป็นโหมดเดี่ยว
   const btn = document.querySelector("#player-join .btn.mint");
   btn.textContent = "▶ เริ่มลุยเดี่ยว";
   btn.onclick = joinSoloGame; 
-
   launchMode('player');
   showPlayerScreen("player-join");
 }
 
 function startMultiPlayer(isTeam = true) {
-  // 1. แสดงช่อง "รหัสห้อง" เสมอ
   $("p-room-code").parentElement.style.display = "grid";
-  
-  // 2. ซ่อน/แสดง การเลือกทีม ตามโหมดที่กดเข้ามา
   $("p-team-list").parentElement.style.display = isTeam ? "grid" : "none";
-  
-  // 3. กำหนดค่า Team ตั้งต้น (ถ้าเล่นเดี่ยว ให้ค่าเป็น none)
   p_isDemo = false;
   p_team = isTeam ? TEAMS[0].id : "none"; 
-  
-  // 4. ตั้งค่าปุ่มกลับเป็นโหมดเชื่อมต่อเซิร์ฟเวอร์
   const btn = document.querySelector("#player-join .btn.mint");
   btn.textContent = "▶ เข้าร่วมภารกิจ";
   btn.onclick = playerJoin; 
-
   launchMode('player');
   showPlayerScreen("player-join");
 }
@@ -841,20 +828,15 @@ function startMultiPlayer(isTeam = true) {
 function joinSoloGame() {
   p_name = $("p-name").value.trim() || "นักรบไร้นาม"; 
   p_isDemo = true;
-  p_team = "none"; // ใช้คำว่า none เพื่อให้เข้ากับระบบแข่งเดี่ยว
-  
-  // Clean Code: รีเซ็ตคะแนนและสถานะเดิม
+  p_team = "none";
   p_score = 0; p_combo = 0; p_stats.mosquitoes = 0; p_stats.miniPoints = 0;
-  
   $("p-badge").textContent = `${p_avatar} ${p_name} · ลุยเดี่ยว`;
   updatePlayerScoreHud();
-  
   showPlayerScreen("player-waiting");
-  
-  // เริ่มเกมทันที
   setTimeout(() => pDemoStartQuestion(0, 0), 600);
 }
 
+// ---------------- HOST ----------------
 async function hostCreateRoom(isDemo){
   h_isDemo = isDemo;
   h_time = Number($("host-time").value || 20);
@@ -864,37 +846,68 @@ async function hostCreateRoom(isDemo){
   h_qIdx = 0;
   h_players = {};
   h_state = makeState("lobby");
-  // บันทึกรูปแบบเกมที่ Host เลือก
   h_state.gameMode = $("host-mode-select") ? $("host-mode-select").value : "team";
   h_lastTotalScore = 0;
-  $("host-room-mode").textContent = h_isDemo ? "Demo" : "Supabase";
+  $("host-room-mode").textContent = h_isDemo ? "Demo" : "Google Sheets";
   $("lobby-title").textContent = $("host-room-name").value || "Dengue Hunter";
   $("host-code-display").textContent = h_roomCode;
   
-  if(!isDemo && !sbClient){ showToast("โหลด Supabase CDN ไม่สำเร็จ ใช้ Demo Mode แทนได้"); return; }
-  
-  if(!isDemo){
-    const payload = {room_code:h_roomCode,name:$("host-room-name").value || "Dengue Hunter",status:"lobby",timePerQ:h_time,stageIdx:0,qIdx:0,q_list:encodeRoomState()};
-    const {error} = await sbClient.from("rooms").insert([payload]);
-    if(error){console.error(error);showToast("สร้างห้องไม่สำเร็จ");return}
-    h_roomChannel = sbClient.channel("host-players-"+h_roomCode)
-      .on("postgres_changes",{event:"*",schema:"public",table:"players",filter:`room_code=eq.${h_roomCode}`},payload=>{
-        if(payload.eventType==="DELETE") delete h_players[payload.old.id];
-        else h_players[payload.new.id] = payload.new;
-        hostPlayersChanged();
-      }).subscribe();
-  }else{
-    // โหมดจำลองของ Host
-    setTimeout(()=>{
-      h_players = {
-        d1:{id:"d1",name:"น้องเมย์",score:0,avatar:JSON.stringify({emoji:"👧",team:"none",answers:0,correct:0,maxCombo:0,fastest:999,mosquitoes:0})}
-      };
-      hostPlayersChanged();
-    },400);
+  if(!isDemo && GAS_URL === "https://script.google.com/macros/s/AKfycbxKUQ9rpTlujFONW3MRXiQ4lvhea92EnRJxPqG1TgRGPgR7__oYTSly_vq5tqFBMIVN/exec"){ 
+    showToast("กรุณาใส่ Web App URL ในโค้ดก่อนใช้งาน"); 
+    return; 
   }
+  
   renderQr();
   showHostScreen("host-lobby");
+
+  if(!isDemo){
+    showToast("กำลังสร้างห้อง...");
+    const payload = {
+      action: "hostCreateRoom",
+      room_code: h_roomCode,
+      name: $("host-room-name").value || "Dengue Hunter",
+      status: "lobby",
+      timePerQ: h_time,
+      stageIdx: 0,
+      qIdx: 0,
+      q_list: encodeRoomState()
+    };
+    
+    try {
+      await fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify(payload)
+      });
+      // เริ่ม Polling เช็คผู้เล่นเข้าห้องทุกๆ 2.5 วินาที
+      h_pollTimer = setInterval(pollPlayers, 2500);
+    } catch(e) {
+      showToast("เกิดข้อผิดพลาดในการสร้างห้อง");
+    }
+  } else {
+    setTimeout(()=>{
+      h_players = { d1:{id:"d1",name:"น้องเมย์",score:0,avatar:JSON.stringify({emoji:"👧",team:"none",answers:0,correct:0,maxCombo:0,fastest:999,mosquitoes:0})} };
+      hostPlayersChanged();
+    }, 400);
+  }
 }
+
+async function pollPlayers() {
+  if (!h_roomCode || h_isDemo) return;
+  try {
+    const res = await fetch(GAS_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "hostGetPlayers", room_code: h_roomCode })
+    });
+    const data = await res.json();
+    if (data.players) {
+      h_players = data.players;
+      hostPlayersChanged();
+    }
+  } catch (e) {
+    console.warn("Polling error", e);
+  }
+}
+
 function renderQr(){
   const base = location.href.split("?")[0];
   const qListStr = encodeURIComponent(JSON.stringify({version:2,indices:h_indices}));
@@ -907,11 +920,11 @@ function renderQr(){
     qr.innerHTML = `<a class="qr-link" href="${url}">${url}</a>`;
   }
 }
-// --- Clean Code: รวบยอดการวาด UI ป้องกันหน้าจอ Host ค้าง (Lag) ---
+
 let hostRenderTimeout = null;
 function hostPlayersChanged(){
-  if(hostRenderTimeout) cancelAnimationFrame(hostRenderTimeout); // ยกเลิกคิวเก่า
-  hostRenderTimeout = requestAnimationFrame(() => { // รวบยอดทำทีเดียว
+  if(hostRenderTimeout) cancelAnimationFrame(hostRenderTimeout);
+  hostRenderTimeout = requestAnimationFrame(() => {
     const total = totalScore();
     if(h_state && ["question","reveal","mini"].includes(h_state.phase)){
       const delta = Math.max(0,total - h_lastTotalScore);
@@ -936,11 +949,9 @@ function totalScore(){return Object.values(h_players).reduce((s,p)=>s+(Number(p.
 function hostRenderPlayers(){
   const players = Object.values(h_players);
   const isFFA = h_state && h_state.gameMode === "ffa";
-  
   $("host-player-count").textContent = players.length;
   $("host-player-list").innerHTML = players.length ? players.map(p=>{
     const m = parseMeta(p), t = teamById(m.team);
-    // ถ้าแข่งเดี่ยวให้เขียนว่า "แข่งเดี่ยว" แทนการบอกชื่อทีม
     const teamText = isFFA ? "แข่งเดี่ยว" : `ทีม${t.name}`;
     const dotColor = isFFA ? 'var(--cyan)' : t.color;
     return `<div class="lb-row"><span class="rank-dot" style="background:${dotColor};color:#07111f">${m.emoji}</span><span class="name">${p.name}<br><small style="color:var(--muted)">${teamText}</small></span><span class="score">${p.score||0}</span></div>`;
@@ -949,17 +960,14 @@ function hostRenderPlayers(){
 function hostRenderLeaderboards(){
   const sorted = Object.values(h_players).sort((a,b)=>(b.score||0)-(a.score||0));
   const isFFA = h_state && h_state.gameMode === "ffa";
-  
   const rowHtml = sorted.length ? sorted.map((p,i)=>{
     const m = parseMeta(p), t = teamById(m.team);
     const subText = isFFA ? `Combo ${m.maxCombo||0}` : `ทีม${t.name} · Combo ${m.maxCombo||0}`;
     const subColor = isFFA ? 'var(--cyan)' : t.color;
     return `<div class="lb-row"><span class="rank-dot">${i+1}</span><span class="name">${m.emoji} ${p.name}<br><small style="color:${subColor}">${subText}</small></span><span class="score">⭐ ${p.score||0}</span></div>`;
   }).join("") : `<p style="color:var(--muted)">รอคะแนนจากผู้เล่น</p>`;
-  
   ["h-lb-list","mini-host-lb"].forEach(id=>{if($(id)) $(id).innerHTML = rowHtml});
   
-  // ซ่อน/แสดง บอร์ดสรุปคะแนนทีม (Team Battle)
   const teamCard = $("h-team-list")?.parentElement;
   if (teamCard) {
     if (isFFA) {
@@ -1192,7 +1200,6 @@ function makeAwards(players){
   const combo = by(p=>parseMeta(p).maxCombo||0);
   const slayer = by(p=>parseMeta(p).mosquitoes||0);
   
-  // Clean Code: ป้องกันการแจกรางวัลทีมแบบสุ่มในโหมดแข่งเดี่ยว
   const isFFA = h_state && h_state.gameMode === "ffa";
   const helper = isFFA ? null : teamTotals()[0];
   
@@ -1216,30 +1223,56 @@ function makeCommentary(delta){
   ];
   return options[Math.floor(Math.random()*options.length)];
 }
-// --- Clean Code: ลดภาระการส่งข้อมูล (Write) ไปยัง Database ---
+
 function queuePublish(){
   if(h_isDemo || h_publishQueued) return;
   h_publishQueued = true;
-  // ปรับเวลาหน่วงเป็น 1000ms (1 วินาที) เพื่อรวบยอด Request ไม่ให้ยิงถี่เกินไป
   setTimeout(()=>{h_publishQueued=false;hostPublish(h_state.phase)},1000);
 }
+
 async function hostPublish(status){
-  if(h_isDemo || !sbClient || !h_roomCode || !h_state) return;
+  if(h_isDemo || !h_roomCode || !h_state) return;
   h_state.updatedAt = Date.now();
-  const {error} = await sbClient.from("rooms").update({status,stageIdx:h_stageIdx,qIdx:h_qIdx,timePerQ:h_questionTime,q_list:encodeRoomState()}).eq("room_code",h_roomCode);
-  if(error) console.warn("publish failed",error);
+  const payload = {
+    action: "hostUpdateRoom",
+    room_code: h_roomCode,
+    status: status,
+    stageIdx: h_stageIdx,
+    qIdx: h_qIdx,
+    timePerQ: h_questionTime,
+    q_list: encodeRoomState()
+  };
+  try {
+    await fetch(GAS_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+  } catch(e) {
+    console.warn("publish failed", e);
+  }
 }
+
 async function hostReset(){
   clearInterval(h_timer);
   clearInterval(h_miniTimer);
   clearInterval(h_demoTimer);
-  if(sbClient && h_roomChannel) await sbClient.removeChannel(h_roomChannel);
-  if(sbClient && !h_isDemo && h_roomCode) await sbClient.from("rooms").delete().eq("room_code",h_roomCode);
+  clearInterval(h_pollTimer);
+  
+  if(!h_isDemo && h_roomCode) {
+    try {
+      fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify({action: "hostDeleteRoom", room_code: h_roomCode})
+      });
+    } catch(e) {}
+  }
+  
   h_roomCode = "";
   h_players = {};
   h_state = null;
   showHostScreen("host-setup");
 }
+
 function startDemoPlayers(isMini=false){
   clearInterval(h_demoTimer);
   h_demoTimer = setInterval(()=>{
@@ -1260,6 +1293,7 @@ function startDemoPlayers(isMini=false){
   },isMini?1600:2200);
 }
 
+// ---------------- PLAYER ----------------
 function pSelectAvatar(btn){
   document.querySelectorAll(".avatar-btn").forEach(b=>b.classList.remove("selected"));
   btn.classList.add("selected");
@@ -1270,40 +1304,68 @@ function pSelectTeam(btn){
   btn.classList.add("selected");
   p_team = btn.dataset.team;
 }
+
 async function playerJoin(){
   p_roomCode = $("p-room-code").value.trim().toUpperCase();
   p_name = $("p-name").value.trim();
   if(!p_roomCode || !p_name){showToast("กรอกรหัสห้องและชื่อก่อนนะ");return}
   
-  // Clean Code: เช็กโหมดเพื่อซ่อนชื่อทีมในห้องรอ
   const team = teamById(p_team);
   $("p-badge").textContent = (p_team === "none" || p_isDemo) 
     ? `${p_avatar} ${p_name} · แข่งเดี่ยว` 
     : `${p_avatar} ${p_name} · ทีม${team.name}`;
   updatePlayerScoreHud();
+
   if(p_isDemo){
     showPlayerScreen("player-waiting");
     setTimeout(()=>pDemoStartQuestion(0,0),900);
     return;
   }
-  if(!sbClient){showToast("โหลด Supabase ไม่สำเร็จ ลอง Demo Mode หรือเปิดผ่านอินเทอร์เน็ต");return}
-  const {data:room,error:roomErr} = await sbClient.from("rooms").select("q_list,status,stageIdx,qIdx,timePerQ").eq("room_code",p_roomCode).single();
-  if(roomErr || !room){showToast("ไม่พบรหัสห้องนี้");return}
-  const parsed = parseRoomData(room.q_list,room.status,room.stageIdx,room.qIdx);
-  p_indices = parsed.indices || p_indices;
-  const {error} = await sbClient.from("players").insert([{id:p_id,room_code:p_roomCode,name:p_name,avatar:encodeMeta(),score:0}]);
-  if(error){console.error(error);showToast("เข้าห้องไม่สำเร็จ ตรวจสอบ table players");return}
-  p_roomChannel = sbClient.channel("player-room-"+p_id)
-    .on("postgres_changes",{event:"UPDATE",schema:"public",table:"rooms",filter:`room_code=eq.${p_roomCode}`},payload=>processRoomUpdate(payload.new))
-    .subscribe();
-  p_playersChannel = sbClient.channel("player-self-"+p_id)
-    .on("postgres_changes",{event:"UPDATE",schema:"public",table:"players",filter:`id=eq.${p_id}`},payload=>{
-      p_score = Number(payload.new.score)||p_score;
-      updatePlayerScoreHud();
-    }).subscribe();
-  showPlayerScreen("player-waiting");
-  processRoomUpdate(room);
+
+  showToast("กำลังเข้าห้อง...");
+  const payload = {
+    action: "playerJoin",
+    id: p_id,
+    room_code: p_roomCode,
+    name: p_name,
+    avatar: encodeMeta(),
+    score: 0
+  };
+
+  try {
+    const res = await fetch(GAS_URL, {
+      method: "POST",
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    
+    if (data.success && data.room) {
+      showPlayerScreen("player-waiting");
+      processRoomUpdate(data.room);
+      // เริ่ม Polling เช็คสถานะห้องทุก 2.5 วิ
+      p_pollTimer = setInterval(pollRoomState, 2500);
+    } else {
+      showToast("ไม่พบรหัสห้องนี้");
+    }
+  } catch(e) {
+    showToast("ข้อผิดพลาดการเชื่อมต่อ");
+  }
 }
+
+async function pollRoomState() {
+  if (!p_roomCode || p_isDemo) return;
+  try {
+    const res = await fetch(GAS_URL, {
+      method: "POST",
+      body: JSON.stringify({ action: "playerGetRoomState", room_code: p_roomCode })
+    });
+    const data = await res.json();
+    if (data.room) {
+      processRoomUpdate(data.room);
+    }
+  } catch (e) {}
+}
+
 function processRoomUpdate(room){
   const parsed = parseRoomData(room.q_list,room.status,room.stageIdx,room.qIdx);
   if(parsed.indices) p_indices = parsed.indices;
@@ -1327,6 +1389,7 @@ function updatePlayerScoreHud(){
   ["p-score","p-mini-score","p-waiting-score"].forEach(id=>{if($(id)) $(id).textContent = `⭐ ${p_score}`});
   if($("p-final-score")) $("p-final-score").textContent = p_score;
 }
+
 function pStartQuestion(state,time){
   const key = `${state.stageIdx}-${state.qIdx}-${state.roundKey || ""}`;
   if(p_activeQuestionKey===key) return;
@@ -1337,9 +1400,8 @@ function pStartQuestion(state,time){
   const q = QUESTIONS[p_indices[state.stageIdx*5 + state.qIdx] ?? (state.stageIdx*5 + state.qIdx)];
   p_questionDuration = state.effect?.id==="swarm" ? Math.min(5,time) : time;
   p_timeLeft = p_questionDuration;
-$("p-stage-chip").textContent = `${ep.icon} ด่าน ${state.stageIdx+1}`;
+  $("p-stage-chip").textContent = `${ep.icon} ด่าน ${state.stageIdx+1}`;
   
-  // อัปเดตเงื่อนไข: ถ้าเป็นโหมดเล่นเดี่ยว (Demo) หรือแข่งเดี่ยว (Team="none")
   $("p-team-chip").textContent = (p_isDemo || p_team === "none") ? `👤 ลุยเดี่ยว` : `${teamById(p_team).icon} ทีม${teamById(p_team).name}`;
   
   $("p-q-text").textContent = q.text;
@@ -1365,6 +1427,7 @@ function pReveal(state){
   const q = QUESTIONS[p_indices[state.stageIdx*5 + state.qIdx] ?? (state.stageIdx*5 + state.qIdx)];
   [...$("p-options").children].forEach((btn,i)=>{if(i===q.correct) btn.classList.add("correct"); btn.disabled = true});
 }
+
 async function pAnswer(idx){
   if(p_answered) return;
   p_answered = true;
@@ -1423,27 +1486,29 @@ async function pAnswer(idx){
   if(p_isDemo) setTimeout(pDemoNext,1700);
   else setTimeout(()=>showPlayerScreen("player-waiting"),2300);
 }
-// --- Clean Code: Debounce การเซฟข้อมูลเพื่อลดภาระ Database ---
-let p_saveTimeout = null; // ตัวแปรเก็บเวลา
+
+let p_saveTimeout = null; 
 async function savePlayer(){
-  if(p_isDemo || !sbClient) return; // โหมดเล่นเดี่ยวไม่ต้องเซฟลง DB
-  
-  // ถ้ายิงคำสั่งมาซ้ำๆ ให้ยกเลิกอันเก่า
+  if(p_isDemo) return; 
   if(p_saveTimeout) clearTimeout(p_saveTimeout);
   
-  // หน่วงเวลาเซฟ 1000ms (1 วินาที) รวบยอด Request
   p_saveTimeout = setTimeout(async () => {
     try {
-      const {error} = await sbClient.from("players")
-        .update({score: p_score, avatar: encodeMeta()})
-        .eq("id", p_id);
-      if(error) throw error;
+      await fetch(GAS_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "playerUpdateScore",
+          id: p_id,
+          avatar: encodeMeta(),
+          score: p_score
+        })
+      });
     } catch (err) {
-      console.warn("Save player delayed/failed, retrying next sync...", err);
-      // ไม่ต้องโชว์ Error ให้ผู้เล่นตกใจ ระบบจะเซฟใหม่ในรอบหน้าอัตโนมัติ
+      console.warn("Save player delayed", err);
     }
   }, 1000); 
 }
+
 function updateComboChip(){
   const chip = $("p-combo-chip");
   if(!chip) return;
@@ -1651,6 +1716,7 @@ async function submitMini(){
 function pFinishGame(){
   clearInterval(p_timer);
   clearInterval(p_mini.timer);
+  clearInterval(p_pollTimer); // สั่งหยุด Polling ตอนจบเกม
   updatePlayerScoreHud();
   const rank = avatarLevel()===4 ? "Legend Hunter" : avatarLevel()===3 ? "นักรบระดับทอง" : avatarLevel()===2 ? "นักรบระดับเงิน" : "นักรบฝึกหัด";
   $("p-final-copy").textContent = `คุณช่วยกำจัดยุง ${p_stats.mosquitoes} ตัว · ปลดล็อก ${rank}`;
@@ -1660,7 +1726,6 @@ function pDemoStartQuestion(stage,qIdx){
   p_roomState = {phase:"question",stageIdx:stage,qIdx,bossHp:EPISODES[stage].boss.maxHp,bossMaxHp:EPISODES[stage].boss.maxHp,effect:null,roundKey:`demo-${stage}-${qIdx}-${Date.now()}`};
   pStartQuestion(p_roomState,20);
 }
-// --- ปรับปรุง Flow โหมดเล่นเดี่ยว (ข้ามด่านราบรื่น) ---
 function pDemoNext(){
   if(p_roomState.phase==="mini"){
     const nextStage = p_roomState.stageIdx + 1;
