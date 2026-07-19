@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
 <style>
@@ -200,6 +201,15 @@ body::after{
 .shake{animation:screenShake .38s linear}
 .flash{animation:flash .55s ease}
 .hidden{display:none!important}
+
+.supabase-panel{border:1px solid var(--line);border-radius:8px;padding:12px;background:rgba(255,255,255,.055);display:grid;gap:10px;margin-bottom:14px}
+.supabase-panel h3{margin:0;color:var(--cyan);font-size:1rem}
+.supabase-panel p{margin:0;color:var(--muted);line-height:1.45;font-size:.88rem}
+.supabase-status{border:1px solid rgba(255,217,90,.35);background:rgba(255,217,90,.1);color:#fff6c9;border-radius:8px;padding:9px 10px;font-weight:800;font-size:.86rem;line-height:1.35}
+.supabase-status.ok{border-color:rgba(70,230,167,.5);background:rgba(70,230,167,.13);color:#d7ffef}
+.supabase-status.bad{border-color:rgba(255,91,91,.5);background:rgba(255,91,91,.13);color:#ffd9d9}
+.supabase-status.compact{margin-top:-4px}
+.field-hint{color:var(--muted);font-size:.78rem;line-height:1.35;margin-top:-4px}
 @keyframes bossFloat{50%{transform:translateY(-9px)}}
 @keyframes bossHit{20%{transform:translateX(-10px) rotate(-2deg)}45%{transform:translateX(12px) rotate(2deg)}70%{transform:translateX(-6px)}}
 @keyframes firePulse{50%{box-shadow:0 0 22px rgba(255,106,85,.45)}}
@@ -232,9 +242,9 @@ body::after{
       <div>
         <div class="badge">Dengue Hunter Ultimate 2026</div>
         <h1 class="title-xl">นักรบต้านยุง<br>ปกป้องหมู่บ้าน</h1>
-        <p class="subtitle">เกม: Host/Player, Boss HP, Team Battle, Combo, Mini Game และ Victory Awards</p>
+        <p class="subtitle">เกม: Host/Player,Boss HP, Team Battle, Combo, Mini Game และ Victory Awards </p>
       </div>
-      <div class="grid grid-2">
+      <div class="grid grid-3">
         <article class="card mode-card" onclick="startSinglePlayer()">
           <div class="big-icon">🎮</div>
           <div>
@@ -242,25 +252,18 @@ body::after{
             <p>เล่นคนเดียวแบบออฟไลน์ ลุยด่าน ตอบคำถาม และสู้บอสทันที</p>
           </div>
         </article>
-        <article class="card mode-card" onclick="startMultiPlayer(false)">
-          <div class="big-icon">🤺</div>
-          <div>
-            <h3>Multiplayer (แข่งเดี่ยว)</h3>
-            <p>แข่งกับเพื่อนในห้องแบบ Free-For-All ไม่มีระบบทีม</p>
-          </div>
-        </article>
-        <article class="card mode-card" onclick="startMultiPlayer(true)">
-          <div class="big-icon">📱</div>
-          <div>
-            <h3>Multiplayer (แข่งเป็นทีม)</h3>
-            <p>เลือก Avatar, เข้าทีม, ช่วยกันโจมตีบอส และทำคะแนนรวม</p>
-          </div>
-        </article>
         <article class="card mode-card" onclick="launchMode('host')">
           <div class="big-icon">🧑‍🏫</div>
           <div>
             <h3>Host Control</h3>
-            <p>สร้างห้อง, ควบคุมด่าน, ดู Boss HP และ Leaderboard</p>
+            <p>สร้างห้อง, เปิด QR, คุมด่าน, ดู Boss HP และ Leaderboard แบบเดี่ยว + ทีม</p>
+          </div>
+        </article>
+        <article class="card mode-card" onclick="launchMode('player')">
+          <div class="big-icon">📱</div>
+          <div>
+            <h3>Player Mission</h3>
+            <p>เลือก Avatar, เข้าทีม, ตอบคำถามเป็นการโจมตี, เก็บ Combo และเล่น Mini Game</p>
           </div>
         </article>
       </div>
@@ -288,13 +291,6 @@ body::after{
             <input id="host-room-name" value="ป.4 นักรบต้านยุง">
           </div>
           <div class="input-group">
-            <label for="host-mode-select">รูปแบบการแข่งขัน</label>
-            <select id="host-mode-select">
-              <option value="ffa">แข่งเดี่ยว (Free-For-All ไม่มีทีม)</option>
-              <option value="team" selected>แข่งเป็นทีม (Team Battle)</option>
-            </select>
-          </div>
-          <div class="input-group">
             <label for="host-time">เวลาต่อคำถาม</label>
             <select id="host-time">
               <option value="10">10 วินาที</option>
@@ -303,9 +299,27 @@ body::after{
               <option value="30">30 วินาที</option>
             </select>
           </div>
+          <div class="supabase-panel">
+            <h3>ตั้งค่า Supabase</h3>
+            <p>ใช้ Project URL และ Publishable key หรือ legacy anon key เท่านั้น ห้ามใช้ service_role/secret key บนหน้าเว็บ</p>
+            <div class="input-group" style="margin-bottom:0">
+              <label for="supabase-url">Supabase Project URL</label>
+              <input id="supabase-url" inputmode="url" placeholder="https://your-project-ref.supabase.co">
+            </div>
+            <div class="input-group" style="margin-bottom:0">
+              <label for="supabase-key">Publishable / anon key</label>
+              <input id="supabase-key" spellcheck="false" placeholder="sb_publishable_... หรือ anon key">
+              <div class="field-hint">ถ้าใส่ค่าคงที่ในไฟล์ index.html แล้ว ช่องนี้จะถูกเติมให้อัตโนมัติ</div>
+            </div>
+            <div id="supabase-status" class="supabase-status bad">ยังไม่ได้ตั้งค่า Supabase</div>
+            <div class="row">
+              <button class="btn ghost" onclick="saveSupabaseConfig()">บันทึกค่า</button>
+              <button class="btn ghost" onclick="testSupabaseConnection()">ทดสอบ DB</button>
+            </div>
+          </div>
           <div class="grid" style="gap:10px">
-            <button class="btn mint" onclick="hostCreateRoom(false)">⚡ สร้างห้องใหม่(Google Sheets)</button>
-            <button class="btn cyan" onclick="hostCreateRoom(true)">🧪 Demo Mode(จำลอง)</button>
+            <button class="btn mint" onclick="hostCreateRoom(false)">⚡ สร้างห้องใหม่ (Supabase)</button>
+            <button class="btn cyan" onclick="hostCreateRoom(true)">🧪 Demo Mode (ไม่ใช้ฐานข้อมูล)</button>
           </div>
         </div>
         <div class="card soft">
@@ -338,7 +352,7 @@ body::after{
           <h1 id="host-code-display" style="letter-spacing:5px;color:var(--yellow);margin:14px 0 4px">----</h1>
           <div class="row" style="justify-content:center">
             <span class="badge">ผู้เล่น <b id="host-player-count">0</b></span>
-            <span class="badge">โหมด <b id="host-room-mode">Google Sheets</b></span>
+            <span class="badge">โหมด <b id="host-room-mode">Supabase</b></span>
           </div>
         </div>
         <div class="card">
@@ -488,6 +502,7 @@ body::after{
         <div class="team-select" id="p-team-list"></div>
       </div>
       <button class="btn mint" onclick="playerJoin()">▶ เข้าร่วมภารกิจ</button>
+      <div id="player-supabase-status" class="supabase-status compact bad">ยังไม่ได้ตั้งค่า Supabase</div>
       <button class="btn ghost" onclick="launchMode('hub')">⌂ เมนู</button>
     </div>
   </section>
@@ -581,10 +596,119 @@ body::after{
 </main>
 
 <script>
-// ==========================================
-// กำหนด URL ของ Google Apps Script Web App ที่ได้จากการ Deploy
-// ==========================================
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxKUQ9rpTlujFONW3MRXiQ4lvhea92EnRJxPqG1TgRGPgR7__oYTSly_vq5tqFBMIVN/exec"; 
+const SUPABASE_URL = ""; // ใส่ Project URL เช่น https://your-project-ref.supabase.co
+const SUPABASE_PUBLIC_KEY = ""; // ใส่ Publishable key หรือ legacy anon key เท่านั้น
+const SUPABASE_CONFIG_STORAGE_KEY = "dengue-hunter-supabase-v1";
+let sbClient = createSupabaseClient();
+
+function readLocalSupabaseConfig(){
+  try{return safeJson(localStorage.getItem(SUPABASE_CONFIG_STORAGE_KEY),{}) || {}}catch{return {}}
+}
+function writeLocalSupabaseConfig(config){
+  try{localStorage.setItem(SUPABASE_CONFIG_STORAGE_KEY,JSON.stringify(config))}catch{}
+}
+function readSupabaseConfig(){
+  const params = new URLSearchParams(location.search);
+  const queryUrl = params.get("sbUrl") || "";
+  const queryKey = params.get("sbKey") || "";
+  const stored = readLocalSupabaseConfig();
+  const globalConfig = window.DENGUE_SUPABASE_CONFIG || {};
+  const url = (queryUrl || globalConfig.url || stored.url || SUPABASE_URL || "").trim();
+  const key = (queryKey || globalConfig.key || globalConfig.publishableKey || globalConfig.anonKey || stored.key || SUPABASE_PUBLIC_KEY || "").trim();
+  return {url,key,fromQuery:Boolean(queryUrl && queryKey),hasBuiltIn:Boolean((SUPABASE_URL||"").trim() && (SUPABASE_PUBLIC_KEY||"").trim())};
+}
+function isPlaceholder(value){
+  return !value || value.includes("...") || /YOUR_|your-project|paste|ใส่/i.test(value);
+}
+function decodeJwtPayload(token){
+  try{
+    const part = token.split(".")[1];
+    if(!part) return null;
+    const normalized = part.replace(/-/g,"+").replace(/_/g,"/");
+    const padded = normalized + "=".repeat((4 - normalized.length % 4) % 4);
+    return JSON.parse(atob(padded));
+  }catch{return null}
+}
+function looksLikeSecretKey(key){
+  if(!key) return false;
+  if(key.startsWith("sb_secret_")) return true;
+  const payload = decodeJwtPayload(key);
+  return payload?.role === "service_role";
+}
+function hasValidSupabaseConfig(config=readSupabaseConfig()){
+  return /^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(config.url)
+    && !isPlaceholder(config.key)
+    && !looksLikeSecretKey(config.key);
+}
+function createSupabaseClient(){
+  const config = readSupabaseConfig();
+  if(!window.supabase || !hasValidSupabaseConfig(config)) return null;
+  return window.supabase.createClient(config.url,config.key,{
+    auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
+    realtime:{params:{eventsPerSecond:20}}
+  });
+}
+function persistSupabaseConfigFromQuery(){
+  const config = readSupabaseConfig();
+  if(config.fromQuery && hasValidSupabaseConfig(config)) writeLocalSupabaseConfig({url:config.url,key:config.key});
+}
+function updateSupabaseStatus(){
+  const config = readSupabaseConfig();
+  const ready = Boolean(window.supabase && hasValidSupabaseConfig(config));
+  const badKey = looksLikeSecretKey(config.key);
+  const message = !window.supabase
+    ? "โหลด Supabase CDN ไม่สำเร็จ กรุณาเชื่อมต่ออินเทอร์เน็ต"
+    : badKey
+      ? "ห้ามใช้ Secret/Service role key บน GitHub Pages"
+      : ready
+        ? "Supabase พร้อมใช้งาน"
+        : "ยังไม่ได้ตั้งค่า Project URL และ Publishable/anon key";
+  ["supabase-status","player-supabase-status"].forEach(id=>{
+    const el = $(id);
+    if(!el) return;
+    el.textContent = message;
+    el.classList.toggle("ok",ready);
+    el.classList.toggle("bad",!ready);
+  });
+  const urlEl = $("supabase-url");
+  const keyEl = $("supabase-key");
+  if(urlEl && !urlEl.value) urlEl.value = config.url;
+  if(keyEl && !keyEl.value) keyEl.value = config.key;
+}
+function saveSupabaseConfig(){
+  const url = ($("supabase-url")?.value || "").trim();
+  const key = ($("supabase-key")?.value || "").trim();
+  if(looksLikeSecretKey(key)){
+    showToast("ห้ามใช้ Secret/Service role key ในหน้าเว็บ");
+    updateSupabaseStatus();
+    return;
+  }
+  writeLocalSupabaseConfig({url,key});
+  sbClient = createSupabaseClient();
+  updateSupabaseStatus();
+  showToast(sbClient ? "บันทึกค่า Supabase แล้ว" : "ยังเชื่อมต่อไม่ได้ ตรวจ URL/Key อีกครั้ง");
+}
+async function testSupabaseConnection(){
+  saveSupabaseConfig();
+  if(!sbClient) return;
+  const {error} = await sbClient.from("rooms").select("room_code").limit(1);
+  if(error){console.error(error);showToast("ทดสอบ DB ไม่ผ่าน: "+error.message);return}
+  showToast("เชื่อมต่อ Supabase สำเร็จ");
+}
+function ensureSupabaseReady(){
+  sbClient = createSupabaseClient();
+  updateSupabaseStatus();
+  if(!sbClient){
+    showToast("ตั้งค่า Supabase URL และ Publishable/anon key ก่อนสร้างห้อง");
+    return false;
+  }
+  return true;
+}
+function shareableSupabaseParams(){
+  const config = readSupabaseConfig();
+  if(!hasValidSupabaseConfig(config) || config.hasBuiltIn) return {};
+  return {sbUrl:config.url,sbKey:config.key};
+}
 
 const QUESTIONS = [
   {text:"ยุงลายตัวเมียเป็นพาหะนำโรคใด?",options:["มาลาเรีย","อหิวาตกโรค","ไข้เลือดออก","ไข้หวัดใหญ่"],correct:2},
@@ -634,6 +758,7 @@ const POWERS = [
 let narratorOn = true;
 let h_isDemo = false;
 let h_roomCode = "";
+let h_roomChannel = null;
 let h_players = {};
 let h_stageIdx = 0;
 let h_qIdx = 0;
@@ -647,10 +772,11 @@ let h_state = null;
 let h_indices = QUESTIONS.map((_,i)=>i);
 let h_lastTotalScore = 0;
 let h_publishQueued = false;
-let h_pollTimer = null; // สำหรับ Host Polling
 
 let p_isDemo = false;
 let p_roomCode = "";
+let p_roomChannel = null;
+let p_playersChannel = null;
 let p_id = "p_" + Date.now() + "_" + Math.random().toString(36).slice(2,7);
 let p_name = "";
 let p_avatar = AVATARS[0];
@@ -672,7 +798,6 @@ let p_indices = QUESTIONS.map((_,i)=>i);
 let p_roomState = null;
 let p_stats = {answers:0,correct:0,maxCombo:0,fastest:999,mosquitoes:0,miniPoints:0};
 let p_mini = {points:0,submitted:false,timer:null,timeLeft:30,type:"swat",matched:0,firstCard:null,swipeIndex:0};
-let p_pollTimer = null; // สำหรับ Player Polling
 
 function $(id){return document.getElementById(id)}
 function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
@@ -731,10 +856,10 @@ function makeState(phase="lobby"){
   };
 }
 function encodeRoomState(){
-  return JSON.stringify({version:2,indices:h_indices,state:h_state});
+  return {version:2,indices:h_indices,state:h_state};
 }
 function parseRoomData(qList,status,stageIdx,qIdx){
-  const parsed = safeJson(qList,null);
+  const parsed = typeof qList === "string" ? safeJson(qList,null) : qList;
   if(Array.isArray(parsed)) return {indices:parsed,state:{phase:status||"question",stageIdx:stageIdx||0,qIdx:qIdx||0,bossHp:100,bossMaxHp:100}};
   if(parsed && parsed.version===2) return {indices:parsed.indices||QUESTIONS.map((_,i)=>i),state:parsed.state||null};
   return {indices:QUESTIONS.map((_,i)=>i),state:null};
@@ -775,6 +900,9 @@ function toggleNarrator(){
 }
 
 function initStaticUi(){
+  persistSupabaseConfigFromQuery();
+  sbClient = createSupabaseClient();
+  updateSupabaseStatus();
   $("setup-road").innerHTML = EPISODES.map((ep,i)=>stageNode(ep,i,false)).join("");
   $("p-avatar-list").innerHTML = AVATARS.map((a,i)=>`<button class="avatar-btn ${i===0?"selected":""}" data-avatar="${a}" onclick="pSelectAvatar(this)">${a}</button>`).join("");
   $("p-team-list").innerHTML = TEAMS.map((t,i)=>`<button class="team-btn ${i===0?"selected":""}" style="--team:${t.color}" data-team="${t.id}" onclick="pSelectTeam(this)">${t.icon}<br>${t.name}</button>`).join("");
@@ -798,191 +926,162 @@ function stageNode(ep,i,active){
   </div>`;
 }
 window.addEventListener("load",initStaticUi);
-
-// ==========================================
-// ส่วนจัดการการเล่น (Single / Multi / Host)
-// ==========================================
-
+// --- สคริปต์สำหรับโหมดเล่นเดี่ยว ---
 function startSinglePlayer() {
-  $("p-room-code").parentElement.style.display = "none";
-  $("p-team-list").parentElement.style.display = "none";
-  const btn = document.querySelector("#player-join .btn.mint");
-  btn.textContent = "▶ เริ่มลุยเดี่ยว";
-  btn.onclick = joinSoloGame; 
-  launchMode('player');
-  showPlayerScreen("player-join");
-}
-
-function startMultiPlayer(isTeam = true) {
-  $("p-room-code").parentElement.style.display = "grid";
-  $("p-team-list").parentElement.style.display = isTeam ? "grid" : "none";
-  p_isDemo = false;
-  p_team = isTeam ? TEAMS[0].id : "none"; 
-  const btn = document.querySelector("#player-join .btn.mint");
-  btn.textContent = "▶ เข้าร่วมภารกิจ";
-  btn.onclick = playerJoin; 
-  launchMode('player');
-  showPlayerScreen("player-join");
-}
-
-function joinSoloGame() {
-  p_name = $("p-name").value.trim() || "นักรบไร้นาม"; 
-  p_isDemo = true;
-  p_team = "none";
-  p_score = 0; p_combo = 0; p_stats.mosquitoes = 0; p_stats.miniPoints = 0;
-  $("p-badge").textContent = `${p_avatar} ${p_name} · ลุยเดี่ยว`;
+  p_isDemo = true; // เปิดโหมด Demo ไม่ต่อ Database
+  p_name = "Solo Hunter"; // กำหนดชื่อเริ่มต้น
+  p_avatar = AVATARS[Math.floor(Math.random() * AVATARS.length)]; // สุ่มอวาตาร์
+  p_team = TEAMS[Math.floor(Math.random() * TEAMS.length)].id; // สุ่มทีม
+  
+  // อัปเดต UI ชิปต่างๆ
+  $("p-badge").textContent = `${p_avatar} ${p_name} · โหมดเล่นเดี่ยว`;
   updatePlayerScoreHud();
+  
+  // สลับหน้าจอไปที่ Player Mode แล้วเริ่มเกมทันที
+  launchMode('player');
   showPlayerScreen("player-waiting");
+  
+  // เริ่มคำถามแรกหลังจากดีเลย์สั้นๆ ให้ UI โหลดเสร็จ
   setTimeout(() => pDemoStartQuestion(0, 0), 600);
 }
 
-// ---------------- HOST ----------------
 async function hostCreateRoom(isDemo){
   h_isDemo = isDemo;
   h_time = Number($("host-time").value || 20);
-  h_roomCode = Math.random().toString(36).slice(2,6).toUpperCase();
+  h_questionTime = h_time;
   h_indices = shuffle(QUESTIONS.map((_,i)=>i)).slice(0,20);
   h_stageIdx = 0;
   h_qIdx = 0;
   h_players = {};
   h_state = makeState("lobby");
-  h_state.gameMode = $("host-mode-select") ? $("host-mode-select").value : "team";
   h_lastTotalScore = 0;
-  $("host-room-mode").textContent = h_isDemo ? "Demo" : "Google Sheets";
+  $("host-room-mode").textContent = h_isDemo ? "Demo" : "Supabase";
   $("lobby-title").textContent = $("host-room-name").value || "Dengue Hunter";
-  $("host-code-display").textContent = h_roomCode;
-  
-  if(!isDemo && GAS_URL === "YOUR_WEB_APP_URL_HERE"){ 
-    showToast("กรุณาใส่ Web App URL ในโค้ดก่อนใช้งาน"); 
-    return; 
-  }
-  
-  renderQr();
-  showHostScreen("host-lobby");
+  if(!isDemo && !ensureSupabaseReady()) return;
 
   if(!isDemo){
-    showToast("กำลังสร้างห้อง...");
-    const payload = {
-      action: "hostCreateRoom",
-      room_code: h_roomCode,
-      name: $("host-room-name").value || "Dengue Hunter",
-      status: "lobby",
-      timePerQ: h_time,
-      stageIdx: 0,
-      qIdx: 0,
-      q_list: encodeRoomState()
-    };
-    
-    try {
-      await fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify(payload)
-      });
-      // เริ่ม Polling เช็คผู้เล่นเข้าห้องทุกๆ 2.5 วินาที
-      h_pollTimer = setInterval(pollPlayers, 2500);
-    } catch(e) {
-      showToast("เกิดข้อผิดพลาดในการสร้างห้อง");
+    let lastError = null;
+    for(let attempt=0;attempt<5;attempt++){
+      h_roomCode = makeRoomCode();
+      h_state = makeState("lobby");
+      const {error} = await sbClient.from("rooms").insert([roomPayload("lobby")]);
+      if(!error){lastError=null;break}
+      lastError = error;
+      if(error.code !== "23505") break;
     }
-  } else {
+    if(lastError){
+      console.error(lastError);
+      showToast("สร้างห้องไม่สำเร็จ: "+(lastError.message || "ตรวจสอบตาราง rooms"));
+      return;
+    }
+    await subscribeHostPlayers();
+  }else{
+    h_roomCode = makeRoomCode();
     setTimeout(()=>{
-      h_players = { d1:{id:"d1",name:"น้องเมย์",score:0,avatar:JSON.stringify({emoji:"👧",team:"none",answers:0,correct:0,maxCombo:0,fastest:999,mosquitoes:0})} };
+      h_players = {
+        d1:{id:"d1",name:"น้องเมย์",score:0,avatar:JSON.stringify({emoji:"👧",team:"red",answers:0,correct:0,maxCombo:0,fastest:999,mosquitoes:0})},
+        d2:{id:"d2",name:"ต้นกล้า",score:0,avatar:JSON.stringify({emoji:"🦸",team:"blue",answers:0,correct:0,maxCombo:0,fastest:999,mosquitoes:0})},
+        d3:{id:"d3",name:"ใบหม่อน",score:0,avatar:JSON.stringify({emoji:"🧑‍🔬",team:"green",answers:0,correct:0,maxCombo:0,fastest:999,mosquitoes:0})},
+        d4:{id:"d4",name:"ภูผา",score:0,avatar:JSON.stringify({emoji:"🥷",team:"yellow",answers:0,correct:0,maxCombo:0,fastest:999,mosquitoes:0})}
+      };
       hostPlayersChanged();
-    }, 400);
+    },400);
   }
+  $("host-code-display").textContent = h_roomCode;
+  renderQr();
+  showHostScreen("host-lobby");
 }
-
-async function pollPlayers() {
-  if (!h_roomCode || h_isDemo) return;
-  try {
-    const res = await fetch(GAS_URL, {
-      method: "POST",
-      body: JSON.stringify({ action: "hostGetPlayers", room_code: h_roomCode })
+function makeRoomCode(){
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = new Uint8Array(4);
+  if(window.crypto?.getRandomValues) window.crypto.getRandomValues(bytes);
+  else for(let i=0;i<bytes.length;i++) bytes[i] = Math.floor(Math.random()*256);
+  return [...bytes].map(n=>alphabet[n % alphabet.length]).join("");
+}
+function roomPayload(status="lobby"){
+  return {
+    room_code:h_roomCode,
+    name:$("host-room-name").value || "Dengue Hunter",
+    status,
+    time_per_q:h_questionTime || h_time,
+    stage_idx:h_stageIdx,
+    q_idx:h_qIdx,
+    q_list:encodeRoomState()
+  };
+}
+async function subscribeHostPlayers(){
+  if(sbClient && h_roomChannel) await sbClient.removeChannel(h_roomChannel);
+  h_roomChannel = sbClient.channel("host-players-"+h_roomCode)
+    .on("postgres_changes",{event:"*",schema:"public",table:"players",filter:`room_code=eq.${h_roomCode}`},payload=>{
+      if(payload.eventType==="DELETE") delete h_players[payload.old.id];
+      else h_players[payload.new.id] = payload.new;
+      hostPlayersChanged();
+    })
+    .subscribe(status=>{
+      if(status==="CHANNEL_ERROR") showToast("Realtime เชื่อมต่อไม่ได้ ตรวจว่าเปิด publication ของ rooms/players แล้ว");
     });
-    const data = await res.json();
-    if (data.players) {
-      h_players = data.players;
-      hostPlayersChanged();
-    }
-  } catch (e) {
-    console.warn("Polling error", e);
-  }
 }
-
 function renderQr(){
-  const base = location.href.split("?")[0];
-  const qListStr = encodeURIComponent(JSON.stringify({version:2,indices:h_indices}));
-  const url = `${base}?mode=player&room=${h_roomCode}${h_isDemo ? `&demo=1&qList=${qListStr}` : ""}`;
+  const url = new URL(location.href.split("?")[0]);
+  url.searchParams.set("mode","player");
+  url.searchParams.set("room",h_roomCode);
+  if(h_isDemo){
+    url.searchParams.set("demo","1");
+    url.searchParams.set("qList",JSON.stringify({version:2,indices:h_indices}));
+  }else{
+    Object.entries(shareableSupabaseParams()).forEach(([key,value])=>url.searchParams.set(key,value));
+  }
   const qr = $("host-qr");
   qr.innerHTML = "";
   if(window.QRCode){
-    new QRCode(qr,{text:url,width:196,height:196,colorDark:"#07111f",colorLight:"#ffffff"});
+    new QRCode(qr,{text:url.toString(),width:196,height:196,colorDark:"#07111f",colorLight:"#ffffff"});
   }else{
     qr.innerHTML = `<a class="qr-link" href="${url}">${url}</a>`;
   }
 }
-
-let hostRenderTimeout = null;
 function hostPlayersChanged(){
-  if(hostRenderTimeout) cancelAnimationFrame(hostRenderTimeout);
-  hostRenderTimeout = requestAnimationFrame(() => {
-    const total = totalScore();
-    if(h_state && ["question","reveal","mini"].includes(h_state.phase)){
-      const delta = Math.max(0,total - h_lastTotalScore);
-      if(delta>0){
-        h_state.bossHp = clamp(h_state.bossHp - delta,0,h_state.bossMaxHp);
-        h_state.commentary = makeCommentary(delta);
-        h_state.updatedAt = Date.now();
-        $("boss-card")?.classList.add("hit");
-        setTimeout(()=>$("boss-card")?.classList.remove("hit"),420);
-        queuePublish();
-      }
-      h_lastTotalScore = total;
-    }else{
-      h_lastTotalScore = total;
+  const total = totalScore();
+  if(h_state && ["question","reveal","mini"].includes(h_state.phase)){
+    const delta = Math.max(0,total - h_lastTotalScore);
+    if(delta>0){
+      h_state.bossHp = clamp(h_state.bossHp - delta,0,h_state.bossMaxHp);
+      h_state.commentary = makeCommentary(delta);
+      h_state.updatedAt = Date.now();
+      $("boss-card")?.classList.add("hit");
+      setTimeout(()=>$("boss-card")?.classList.remove("hit"),420);
+      queuePublish();
     }
-    hostRenderPlayers();
-    hostRenderLeaderboards();
-    hostRenderBoss();
-  });
+    h_lastTotalScore = total;
+  }else{
+    h_lastTotalScore = total;
+  }
+  hostRenderPlayers();
+  hostRenderLeaderboards();
+  hostRenderBoss();
 }
 function totalScore(){return Object.values(h_players).reduce((s,p)=>s+(Number(p.score)||0),0)}
 function hostRenderPlayers(){
   const players = Object.values(h_players);
-  const isFFA = h_state && h_state.gameMode === "ffa";
   $("host-player-count").textContent = players.length;
   $("host-player-list").innerHTML = players.length ? players.map(p=>{
     const m = parseMeta(p), t = teamById(m.team);
-    const teamText = isFFA ? "แข่งเดี่ยว" : `ทีม${t.name}`;
-    const dotColor = isFFA ? 'var(--cyan)' : t.color;
-    return `<div class="lb-row"><span class="rank-dot" style="background:${dotColor};color:#07111f">${m.emoji}</span><span class="name">${p.name}<br><small style="color:var(--muted)">${teamText}</small></span><span class="score">${p.score||0}</span></div>`;
+    return `<div class="lb-row"><span class="rank-dot" style="background:${t.color};color:#07111f">${m.emoji}</span><span class="name">${p.name}<br><small style="color:var(--muted)">ทีม${t.name}</small></span><span class="score">${p.score||0}</span></div>`;
   }).join("") : `<p style="color:var(--muted)">ยังไม่มีผู้เล่นเข้าห้อง</p>`;
 }
 function hostRenderLeaderboards(){
   const sorted = Object.values(h_players).sort((a,b)=>(b.score||0)-(a.score||0));
-  const isFFA = h_state && h_state.gameMode === "ffa";
   const rowHtml = sorted.length ? sorted.map((p,i)=>{
     const m = parseMeta(p), t = teamById(m.team);
-    const subText = isFFA ? `Combo ${m.maxCombo||0}` : `ทีม${t.name} · Combo ${m.maxCombo||0}`;
-    const subColor = isFFA ? 'var(--cyan)' : t.color;
-    return `<div class="lb-row"><span class="rank-dot">${i+1}</span><span class="name">${m.emoji} ${p.name}<br><small style="color:${subColor}">${subText}</small></span><span class="score">⭐ ${p.score||0}</span></div>`;
+    return `<div class="lb-row"><span class="rank-dot">${i+1}</span><span class="name">${m.emoji} ${p.name}<br><small style="color:${t.color}">ทีม${t.name} · Combo ${m.maxCombo||0}</small></span><span class="score">⭐ ${p.score||0}</span></div>`;
   }).join("") : `<p style="color:var(--muted)">รอคะแนนจากผู้เล่น</p>`;
   ["h-lb-list","mini-host-lb"].forEach(id=>{if($(id)) $(id).innerHTML = rowHtml});
-  
-  const teamCard = $("h-team-list")?.parentElement;
-  if (teamCard) {
-    if (isFFA) {
-      teamCard.style.display = "none";
-    } else {
-      teamCard.style.display = "block";
-      const teamScores = teamTotals();
-      const max = Math.max(1,...teamScores.map(t=>t.score));
-      $("h-team-list").innerHTML = teamScores.map(t=>`<div class="team-row">
-        <span class="team-swatch" style="background:${t.color}"></span>
-        <div><b>${t.icon} ทีม${t.name}</b><div class="team-meter"><span style="background:${t.color};width:${Math.max(6,(t.score/max)*100)}%"></span></div></div>
-        <b>${t.score}</b>
-      </div>`).join("");
-    }
-  }
+  const teamScores = teamTotals();
+  const max = Math.max(1,...teamScores.map(t=>t.score));
+  $("h-team-list").innerHTML = teamScores.map(t=>`<div class="team-row">
+    <span class="team-swatch" style="background:${t.color}"></span>
+    <div><b>${t.icon} ทีม${t.name}</b><div class="team-meter"><span style="background:${t.color};width:${Math.max(6,(t.score/max)*100)}%"></span></div></div>
+    <b>${t.score}</b>
+  </div>`).join("");
 }
 function teamTotals(){
   const totals = TEAMS.map(t=>({...t,score:0}));
@@ -1199,10 +1298,7 @@ function makeAwards(players){
   });
   const combo = by(p=>parseMeta(p).maxCombo||0);
   const slayer = by(p=>parseMeta(p).mosquitoes||0);
-  
-  const isFFA = h_state && h_state.gameMode === "ffa";
-  const helper = isFFA ? null : teamTotals()[0];
-  
+  const helper = teamTotals()[0];
   return [
     {icon:"🏆",title:"MVP",name:top ? top.name : "-"},
     {icon:"⚡",title:"Fastest",name:fastest ? fastest.name : "-"},
@@ -1223,56 +1319,28 @@ function makeCommentary(delta){
   ];
   return options[Math.floor(Math.random()*options.length)];
 }
-
 function queuePublish(){
   if(h_isDemo || h_publishQueued) return;
   h_publishQueued = true;
-  setTimeout(()=>{h_publishQueued=false;hostPublish(h_state.phase)},1000);
+  setTimeout(()=>{h_publishQueued=false;hostPublish(h_state.phase)},250);
 }
-
 async function hostPublish(status){
-  if(h_isDemo || !h_roomCode || !h_state) return;
+  if(h_isDemo || !sbClient || !h_roomCode || !h_state) return;
   h_state.updatedAt = Date.now();
-  const payload = {
-    action: "hostUpdateRoom",
-    room_code: h_roomCode,
-    status: status,
-    stageIdx: h_stageIdx,
-    qIdx: h_qIdx,
-    timePerQ: h_questionTime,
-    q_list: encodeRoomState()
-  };
-  try {
-    await fetch(GAS_URL, {
-      method: "POST",
-      body: JSON.stringify(payload)
-    });
-  } catch(e) {
-    console.warn("publish failed", e);
-  }
+  const {error} = await sbClient.from("rooms").update({status,stage_idx:h_stageIdx,q_idx:h_qIdx,time_per_q:h_questionTime,q_list:encodeRoomState()}).eq("room_code",h_roomCode);
+  if(error) console.warn("publish failed",error);
 }
-
 async function hostReset(){
   clearInterval(h_timer);
   clearInterval(h_miniTimer);
   clearInterval(h_demoTimer);
-  clearInterval(h_pollTimer);
-  
-  if(!h_isDemo && h_roomCode) {
-    try {
-      fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify({action: "hostDeleteRoom", room_code: h_roomCode})
-      });
-    } catch(e) {}
-  }
-  
+  if(sbClient && h_roomChannel) await sbClient.removeChannel(h_roomChannel);
+  if(sbClient && !h_isDemo && h_roomCode) await sbClient.from("rooms").delete().eq("room_code",h_roomCode);
   h_roomCode = "";
   h_players = {};
   h_state = null;
   showHostScreen("host-setup");
 }
-
 function startDemoPlayers(isMini=false){
   clearInterval(h_demoTimer);
   h_demoTimer = setInterval(()=>{
@@ -1293,7 +1361,6 @@ function startDemoPlayers(isMini=false){
   },isMini?1600:2200);
 }
 
-// ---------------- PLAYER ----------------
 function pSelectAvatar(btn){
   document.querySelectorAll(".avatar-btn").forEach(b=>b.classList.remove("selected"));
   btn.classList.add("selected");
@@ -1304,75 +1371,43 @@ function pSelectTeam(btn){
   btn.classList.add("selected");
   p_team = btn.dataset.team;
 }
-
 async function playerJoin(){
   p_roomCode = $("p-room-code").value.trim().toUpperCase();
   p_name = $("p-name").value.trim();
   if(!p_roomCode || !p_name){showToast("กรอกรหัสห้องและชื่อก่อนนะ");return}
-  
   const team = teamById(p_team);
-  $("p-badge").textContent = (p_team === "none" || p_isDemo) 
-    ? `${p_avatar} ${p_name} · แข่งเดี่ยว` 
-    : `${p_avatar} ${p_name} · ทีม${team.name}`;
+  $("p-badge").textContent = `${p_avatar} ${p_name} · ทีม${team.name}`;
   updatePlayerScoreHud();
-
   if(p_isDemo){
     showPlayerScreen("player-waiting");
     setTimeout(()=>pDemoStartQuestion(0,0),900);
     return;
   }
-
-  showToast("กำลังเข้าห้อง...");
-  const payload = {
-    action: "playerJoin",
-    id: p_id,
-    room_code: p_roomCode,
-    name: p_name,
-    avatar: encodeMeta(),
-    score: 0
-  };
-
-  try {
-    const res = await fetch(GAS_URL, {
-      method: "POST",
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    
-    if (data.success && data.room) {
-      showPlayerScreen("player-waiting");
-      processRoomUpdate(data.room);
-      // เริ่ม Polling เช็คสถานะห้องทุก 2.5 วิ
-      p_pollTimer = setInterval(pollRoomState, 2500);
-    } else {
-      showToast("ไม่พบรหัสห้องนี้");
-    }
-  } catch(e) {
-    showToast("ข้อผิดพลาดการเชื่อมต่อ");
-  }
+  if(!sbClient){showToast("ตั้งค่า Supabase URL และ Publishable/anon key ก่อนเข้าห้อง");updateSupabaseStatus();return}
+  const {data:room,error:roomErr} = await sbClient.from("rooms").select("q_list,status,stage_idx,q_idx,time_per_q").eq("room_code",p_roomCode).single();
+  if(roomErr || !room){showToast("ไม่พบรหัสห้องนี้");return}
+  const parsed = parseRoomData(room.q_list,room.status,room.stage_idx,room.q_idx);
+  p_indices = parsed.indices || p_indices;
+  const {error} = await sbClient.from("players").insert([{id:p_id,room_code:p_roomCode,name:p_name,avatar:encodeMeta(),score:0}]);
+  if(error){console.error(error);showToast("เข้าห้องไม่สำเร็จ ตรวจสอบ table players");return}
+  p_roomChannel = sbClient.channel("player-room-"+p_id)
+    .on("postgres_changes",{event:"UPDATE",schema:"public",table:"rooms",filter:`room_code=eq.${p_roomCode}`},payload=>processRoomUpdate(payload.new))
+    .subscribe();
+  p_playersChannel = sbClient.channel("player-self-"+p_id)
+    .on("postgres_changes",{event:"UPDATE",schema:"public",table:"players",filter:`id=eq.${p_id}`},payload=>{
+      p_score = Number(payload.new.score)||p_score;
+      updatePlayerScoreHud();
+    }).subscribe();
+  showPlayerScreen("player-waiting");
+  processRoomUpdate(room);
 }
-
-async function pollRoomState() {
-  if (!p_roomCode || p_isDemo) return;
-  try {
-    const res = await fetch(GAS_URL, {
-      method: "POST",
-      body: JSON.stringify({ action: "playerGetRoomState", room_code: p_roomCode })
-    });
-    const data = await res.json();
-    if (data.room) {
-      processRoomUpdate(data.room);
-    }
-  } catch (e) {}
-}
-
 function processRoomUpdate(room){
-  const parsed = parseRoomData(room.q_list,room.status,room.stageIdx,room.qIdx);
+  const parsed = parseRoomData(room.q_list,room.status,room.stage_idx,room.q_idx);
   if(parsed.indices) p_indices = parsed.indices;
-  const state = parsed.state || {phase:room.status,stageIdx:room.stageIdx||0,qIdx:room.qIdx||0,bossHp:100,bossMaxHp:100};
+  const state = parsed.state || {phase:room.status,stageIdx:room.stage_idx||0,qIdx:room.q_idx||0,bossHp:100,bossMaxHp:100};
   p_roomState = state;
   updatePlayerBossHud(state);
-  if(state.phase==="question") pStartQuestion(state,room.timePerQ||20);
+  if(state.phase==="question") pStartQuestion(state,room.time_per_q||20);
   if(state.phase==="reveal") pReveal(state);
   if(state.phase==="mini") pStartMini(state);
   if(state.phase==="ended") pFinishGame();
@@ -1389,7 +1424,6 @@ function updatePlayerScoreHud(){
   ["p-score","p-mini-score","p-waiting-score"].forEach(id=>{if($(id)) $(id).textContent = `⭐ ${p_score}`});
   if($("p-final-score")) $("p-final-score").textContent = p_score;
 }
-
 function pStartQuestion(state,time){
   const key = `${state.stageIdx}-${state.qIdx}-${state.roundKey || ""}`;
   if(p_activeQuestionKey===key) return;
@@ -1401,9 +1435,7 @@ function pStartQuestion(state,time){
   p_questionDuration = state.effect?.id==="swarm" ? Math.min(5,time) : time;
   p_timeLeft = p_questionDuration;
   $("p-stage-chip").textContent = `${ep.icon} ด่าน ${state.stageIdx+1}`;
-  
-  $("p-team-chip").textContent = (p_isDemo || p_team === "none") ? `👤 ลุยเดี่ยว` : `${teamById(p_team).icon} ทีม${teamById(p_team).name}`;
-  
+  $("p-team-chip").textContent = `${teamById(p_team).icon} ทีม${teamById(p_team).name}`;
   $("p-q-text").textContent = q.text;
   $("p-feedback").textContent = "";
   $("p-options").innerHTML = q.options.map((o,i)=>`<button class="opt-btn" onclick="pAnswer(${i})"><span class="letter">${"ABCD"[i]}</span>${o}</button>`).join("");
@@ -1427,7 +1459,6 @@ function pReveal(state){
   const q = QUESTIONS[p_indices[state.stageIdx*5 + state.qIdx] ?? (state.stageIdx*5 + state.qIdx)];
   [...$("p-options").children].forEach((btn,i)=>{if(i===q.correct) btn.classList.add("correct"); btn.disabled = true});
 }
-
 async function pAnswer(idx){
   if(p_answered) return;
   p_answered = true;
@@ -1486,29 +1517,27 @@ async function pAnswer(idx){
   if(p_isDemo) setTimeout(pDemoNext,1700);
   else setTimeout(()=>showPlayerScreen("player-waiting"),2300);
 }
-
-let p_saveTimeout = null; 
+// --- Clean Code: Debounce การเซฟข้อมูลเพื่อลดภาระ Database ---
+let p_saveTimeout = null; // ตัวแปรเก็บเวลา
 async function savePlayer(){
-  if(p_isDemo) return; 
+  if(p_isDemo || !sbClient) return; // โหมดเล่นเดี่ยวไม่ต้องเซฟลง DB
+  
+  // ถ้ายิงคำสั่งมาซ้ำๆ ให้ยกเลิกอันเก่า
   if(p_saveTimeout) clearTimeout(p_saveTimeout);
   
+  // หน่วงเวลาเซฟ 1000ms (1 วินาที) รวบยอด Request
   p_saveTimeout = setTimeout(async () => {
     try {
-      await fetch(GAS_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "playerUpdateScore",
-          id: p_id,
-          avatar: encodeMeta(),
-          score: p_score
-        })
-      });
+      const {error} = await sbClient.from("players")
+        .update({score: p_score, avatar: encodeMeta()})
+        .eq("id", p_id);
+      if(error) throw error;
     } catch (err) {
-      console.warn("Save player delayed", err);
+      console.warn("Save player delayed/failed, retrying next sync...", err);
+      // ไม่ต้องโชว์ Error ให้ผู้เล่นตกใจ ระบบจะเซฟใหม่ในรอบหน้าอัตโนมัติ
     }
   }, 1000); 
 }
-
 function updateComboChip(){
   const chip = $("p-combo-chip");
   if(!chip) return;
@@ -1716,7 +1745,6 @@ async function submitMini(){
 function pFinishGame(){
   clearInterval(p_timer);
   clearInterval(p_mini.timer);
-  clearInterval(p_pollTimer); // สั่งหยุด Polling ตอนจบเกม
   updatePlayerScoreHud();
   const rank = avatarLevel()===4 ? "Legend Hunter" : avatarLevel()===3 ? "นักรบระดับทอง" : avatarLevel()===2 ? "นักรบระดับเงิน" : "นักรบฝึกหัด";
   $("p-final-copy").textContent = `คุณช่วยกำจัดยุง ${p_stats.mosquitoes} ตัว · ปลดล็อก ${rank}`;
@@ -1726,6 +1754,7 @@ function pDemoStartQuestion(stage,qIdx){
   p_roomState = {phase:"question",stageIdx:stage,qIdx,bossHp:EPISODES[stage].boss.maxHp,bossMaxHp:EPISODES[stage].boss.maxHp,effect:null,roundKey:`demo-${stage}-${qIdx}-${Date.now()}`};
   pStartQuestion(p_roomState,20);
 }
+// --- ปรับปรุง Flow โหมดเล่นเดี่ยว (ข้ามด่านราบรื่น) ---
 function pDemoNext(){
   if(p_roomState.phase==="mini"){
     const nextStage = p_roomState.stageIdx + 1;
