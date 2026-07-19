@@ -596,8 +596,8 @@ body::after{
 </main>
 
 <script>
-const SUPABASE_URL = "https://jwpxmztedquoyzgnzudf.supabase.co/rest/v1"; 
-const SUPABASE_PUBLIC_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3cHhtenRlZHF1b3l6Z256dWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNjExNzksImV4cCI6MjA5OTkzNzE3OX0.mL38vcGGwhPb18ls6D9UGsXPW2IsMlN8zDDowh-vAYM"; 
+const SUPABASE_URL = "https://jwpxmztedquoyzgnzudf.supabase.co/rest/v1"; // ใส่ Project URL เช่น https://your-project-ref.supabase.co
+const SUPABASE_PUBLIC_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp3cHhtenRlZHF1b3l6Z256dWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNjExNzksImV4cCI6MjA5OTkzNzE3OX0.mL38vcGGwhPb18ls6D9UGsXPW2IsMlN8zDDowh-vAYM"; // ใส่ Publishable key หรือ legacy anon key เท่านั้น
 const SUPABASE_CONFIG_STORAGE_KEY = "dengue-hunter-supabase-v1";
 let sbClient = createSupabaseClient();
 
@@ -607,13 +607,16 @@ function readLocalSupabaseConfig(){
 function writeLocalSupabaseConfig(config){
   try{localStorage.setItem(SUPABASE_CONFIG_STORAGE_KEY,JSON.stringify(config))}catch{}
 }
+function normalizeSupabaseUrl(url){
+  return (url || "").trim().replace(/[/]+$/,"").replace(/[/]rest[/]v1$/i,"");
+}
 function readSupabaseConfig(){
   const params = new URLSearchParams(location.search);
   const queryUrl = params.get("sbUrl") || "";
   const queryKey = params.get("sbKey") || "";
   const stored = readLocalSupabaseConfig();
   const globalConfig = window.DENGUE_SUPABASE_CONFIG || {};
-  const url = (queryUrl || globalConfig.url || stored.url || SUPABASE_URL || "").trim();
+  const url = normalizeSupabaseUrl(queryUrl || globalConfig.url || stored.url || SUPABASE_URL || "");
   const key = (queryKey || globalConfig.key || globalConfig.publishableKey || globalConfig.anonKey || stored.key || SUPABASE_PUBLIC_KEY || "").trim();
   return {url,key,fromQuery:Boolean(queryUrl && queryKey),hasBuiltIn:Boolean((SUPABASE_URL||"").trim() && (SUPABASE_PUBLIC_KEY||"").trim())};
 }
@@ -676,13 +679,14 @@ function updateSupabaseStatus(){
   if(keyEl && !keyEl.value) keyEl.value = config.key;
 }
 function saveSupabaseConfig(){
-  const url = ($("supabase-url")?.value || "").trim();
+  const url = normalizeSupabaseUrl($("supabase-url")?.value || "");
   const key = ($("supabase-key")?.value || "").trim();
   if(looksLikeSecretKey(key)){
     showToast("ห้ามใช้ Secret/Service role key ในหน้าเว็บ");
     updateSupabaseStatus();
     return;
   }
+  if($("supabase-url")) $("supabase-url").value = url;
   writeLocalSupabaseConfig({url,key});
   sbClient = createSupabaseClient();
   updateSupabaseStatus();
@@ -1782,4 +1786,3 @@ function pDemoNext(){
 </script>
 </body>
 </html>
-
