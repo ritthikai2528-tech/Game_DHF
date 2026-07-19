@@ -171,8 +171,16 @@ body::after{
 .mosquito-cloud span{position:absolute;font-size:1.8rem;animation:flyAcross 1.5s ease-in forwards}
 .mini-arena{position:relative;min-height:360px;border:1px solid var(--line);border-radius:8px;background:rgba(255,255,255,.06);overflow:hidden}
 .mosquito-target{position:absolute;width:52px;height:52px;border:0;border-radius:999px;background:rgba(255,255,255,.14);font-size:1.65rem;display:grid;place-items:center;cursor:pointer}
-.hotspot{position:absolute;border:2px dashed rgba(255,255,255,.45);background:rgba(255,255,255,.08);color:#fff;border-radius:999px;width:42px;height:42px;font-weight:900;cursor:pointer}
-.hotspot.found{background:rgba(70,230,125,.24);border-color:var(--green)}
+/* CSS ใหม่สำหรับด่านจับคู่แหล่งเพาะพันธุ์ให้เป็นรูปภาพ */
+.hotspot{position:absolute;border:none;background:transparent;border-radius:12px;width:56px;height:56px;font-size:2.8rem;display:grid;place-items:center;cursor:pointer;transition:transform 0.15s;filter:drop-shadow(0 6px 8px rgba(0,0,0,0.4))}
+.hotspot:hover{transform:scale(1.15)}
+.hotspot.found{filter:grayscale(60%) opacity(0.85);pointer-events:none}
+.hotspot-icon{position:relative;display:inline-block;}
+.hotspot-mark{position:absolute;inset:0;display:grid;place-items:center;font-size:3.5rem;font-weight:900;text-shadow:0 0 16px rgba(0,0,0,0.8);opacity:0;transition:opacity 0.2s;}
+.hotspot.found .hotspot-mark{opacity:1;}
+.hotspot-mark.yes{color:var(--green);}
+.hotspot-mark.no{color:var(--red);}
+
 .drag-board{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px}
 .drag-item,.drop-zone{min-height:58px;border-radius:8px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;padding:10px;text-align:center;font-weight:800}
 .drag-item{background:rgba(55,216,255,.12);cursor:grab}
@@ -753,7 +761,7 @@ const QUESTIONS = [
 
 const EPISODES = [
   {id:"village",icon:"🏘️",name:"Episode 1: Village",sub:"ค้นหาแหล่งน้ำขัง",boss:{name:"Boss ลูกน้ำ",icon:"🪱",maxHp:850},mini:{type:"swat",title:"ตบยุงกู้หมู่บ้าน",desc:"แตะยุงที่บินบนจอให้ได้มากที่สุด"}},
-  {id:"forest",icon:"🌿",name:"Episode 2: Forest",sub:"จัดการยุงลายในพื้นที่สีเขียว",boss:{name:"Boss ยุงลาย",icon:"🦟",maxHp:1100},mini:{type:"breeding",title:"หาแหล่งเพาะพันธุ์",desc:"แตะจุดเสี่ยงน้ำขังให้ครบ"}},
+  {id:"forest",icon:"🌿",name:"Episode 2: Forest",sub:"จัดการยุงลายในพื้นที่สีเขียว",boss:{name:"Boss ยุงลาย",icon:"🦟",maxHp:1100},mini:{type:"breeding",title:"หาแหล่งเพาะพันธุ์",desc:"แตะเลือกจุดที่เสี่ยงน้ำขัง"}},
   {id:"city",icon:"🏙️",name:"Episode 3: City",sub:"หยุดการระบาดในชุมชน",boss:{name:"Boss ไวรัสเดงกี",icon:"🧬",maxHp:1350},mini:{type:"memory",title:"Memory ภารกิจสุขภาพ",desc:"จับคู่ความรู้ป้องกันยุง"}},
   {id:"final",icon:"👑",name:"Final: Mosquito King",sub:"รวมพลังทั้งห้องปกป้องหมู่บ้าน",boss:{name:"MOSQUITO KING",icon:"👹",maxHp:1800},mini:{type:"swipe",title:"Swipe Fact Check",desc:"ปัด/เลือกถูกผิดให้เร็ว"}}
 ];
@@ -1611,27 +1619,45 @@ async function pAnswer(idx){
   if(p_isDemo) setTimeout(pDemoNext,1700);
   else setTimeout(()=>showPlayerScreen("player-waiting"),2300);
 }
-// --- Clean Code: Debounce การเซฟข้อมูลเพื่อลดภาระ Database ---
-let p_saveTimeout = null; // ตัวแปรเก็บเวลา
+
+// --- Clean Code: จัดการคิวการเซฟข้อมูลป้องกัน Error (Concurrency Control) ---
+let p_saveTimeout = null;
+let p_isSaving = false;
+let p_pendingSave = false;
+
 async function savePlayer(){
-  if(p_isDemo || !sbClient) return; // โหมดเล่นเดี่ยวไม่ต้องเซฟลง DB
+  if(p_isDemo || !sbClient) return;
   
-  // ถ้ายิงคำสั่งมาซ้ำๆ ให้ยกเลิกอันเก่า
+  p_pendingSave = true;
   if(p_saveTimeout) clearTimeout(p_saveTimeout);
   
-  // หน่วงเวลาเซฟ 1000ms (1 วินาที) รวบยอด Request
+  // หน่วงเวลาเพื่อรวบยอด Request
   p_saveTimeout = setTimeout(async () => {
+    // ถ้าระบบยังบันทึกของเก่าไม่เสร็จ ให้รอไปก่อน
+    if(p_isSaving) {
+       savePlayer();
+       return;
+    }
+    
+    p_isSaving = true;
+    p_pendingSave = false;
+    
     try {
       const {error} = await sbClient.from("players")
         .update({score: p_score, avatar: encodeMeta()})
         .eq("id", p_id);
       if(error) throw error;
     } catch (err) {
-      console.warn("Save player delayed/failed, retrying next sync...", err);
-      // ไม่ต้องโชว์ Error ให้ผู้เล่นตกใจ ระบบจะเซฟใหม่ในรอบหน้าอัตโนมัติ
+      console.warn("Save delayed, auto retrying...", err);
+      p_pendingSave = true; 
+    } finally {
+      p_isSaving = false;
+      // หากมีการอัปเดตคะแนนระหว่างกำลังเซฟ ให้เซฟรอบใหม่ทันที
+      if(p_pendingSave) savePlayer();
     }
   }, 1000); 
 }
+
 function updateComboChip(){
   const chip = $("p-combo-chip");
   if(!chip) return;
@@ -1744,24 +1770,52 @@ function spawnMosquito(arena){
   };
   arena.appendChild(btn);
 }
+
+// --- เปลี่ยนแปลงใหม่: ใช้ภาพ Emoji เสมือนจริงแทนเครื่องหมายตกใจ/คำถาม ---
 function renderBreeding(arena){
   arena.style.background = "linear-gradient(180deg,rgba(70,230,167,.13),rgba(55,216,255,.08)),rgba(255,255,255,.06)";
-  const spots = [[12,20,1],[28,38,0],[44,22,1],[64,35,1],[78,18,0],[16,65,1],[36,72,1],[58,62,0],[76,72,1],[88,50,1]];
-  spots.forEach(([x,y,good],i)=>{
+  
+  // ของเสี่ยงเป็นแหล่งเพาะพันธุ์ยุงลาย (ยางรถยนต์, โอ่งน้ำ, อ่างบัว, ขยะ, แจกัน)
+  const targets = ["🛞", "🏺", "🪴", "🗑️", "🏺"]; 
+  // ของปกติไม่ขังน้ำ (จักรยาน, ลูกบอล, กล่องพัสดุ, รองเท้า, ทีวี)
+  const safes = ["🚲", "⚽", "📦", "👟", "📺"];
+  
+  // พิกัด (x, y, 1=เป้าหมาย 0=หลอก, icon)
+  const spots = [
+    [12, 18, 1, targets[0]], [28, 38, 0, safes[0]], [44, 22, 1, targets[1]],
+    [64, 35, 1, targets[2]], [78, 18, 0, safes[1]], [16, 65, 1, targets[3]],
+    [36, 72, 1, targets[4]], [58, 62, 0, safes[2]], [76, 72, 1, targets[0]],
+    [86, 48, 0, safes[3]]
+  ];
+  
+  spots.forEach(([x,y,good,icon], i)=>{
     const b = document.createElement("button");
     b.className = "hotspot";
-    b.style.left = x+"%";
-    b.style.top = y+"%";
-    b.textContent = good ? "?" : "!";
+    b.style.left = x + "%";
+    b.style.top = y + "%";
+    
+    // โครงสร้างข้างในเพื่อให้เวลาคลิก แสดงสัญลักษณ์ทับไปที่รูปได้
+    b.innerHTML = `<span class="hotspot-icon">${icon}<span class="hotspot-mark"></span></span>`;
+    
     b.onclick = () => {
       if(b.classList.contains("found")) return;
       b.classList.add("found");
-      b.textContent = good ? "✓" : "×";
-      addMiniPoints(good?28:-8,good?1:0);
+      
+      const mark = b.querySelector(".hotspot-mark");
+      if (good) {
+        mark.classList.add("yes");
+        mark.textContent = "✓";
+      } else {
+        mark.classList.add("no");
+        mark.textContent = "×";
+      }
+      
+      addMiniPoints(good?28:-8, good?1:0);
     };
     arena.appendChild(b);
   });
 }
+
 function renderMemory(arena){
   const icons = shuffle(["🦟","🪱","🏺","🧴","🦟","🪱","🏺","🧴"]);
   const grid = document.createElement("div");
@@ -1848,7 +1902,6 @@ function pDemoStartQuestion(stage,qIdx){
   p_roomState = {phase:"question",stageIdx:stage,qIdx,bossHp:EPISODES[stage].boss.maxHp,bossMaxHp:EPISODES[stage].boss.maxHp,effect:null,roundKey:`demo-${stage}-${qIdx}-${Date.now()}`};
   pStartQuestion(p_roomState,20);
 }
-// --- ปรับปรุง Flow โหมดเล่นเดี่ยว (ข้ามด่านราบรื่น) ---
 function pDemoNext(){
   if(p_roomState.phase==="mini"){
     const nextStage = p_roomState.stageIdx + 1;
